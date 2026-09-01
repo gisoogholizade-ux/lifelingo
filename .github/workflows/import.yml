@@ -1,0 +1,43 @@
+name: Import standalone LifeLingo
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/import.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import LifeLingo
+        run: |
+          git clone --depth 1 https://github.com/gisoogholizade-ux/gisoogholizade-ux.git /tmp/source
+          rsync -a --delete --exclude='.git' --exclude='.github' /tmp/source/demos/lifelingo/ ./
+          cat > README.md <<'EOF'
+          # LifeLingo
+
+          Game-like language learning web app focused on realistic everyday scenarios, voice interaction and immersive UI.
+
+          ## Current entry
+          Open `v41.html` for the latest clean build.
+
+          ## Run locally
+          Use a static HTTP server (recommended because the app loads files with `fetch`).
+
+          Example: `python -m http.server 8080`
+
+          Then open `http://localhost:8080/v41.html`.
+
+          ## Clone
+          `git clone https://github.com/gisoogholizade-ux/lifelingo.git`
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Import LifeLingo standalone app"
+          git push
