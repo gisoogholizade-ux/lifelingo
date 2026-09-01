@@ -3,16 +3,16 @@ const $=s=>document.querySelector(s);
 const user=()=>{try{return JSON.parse(localStorage.getItem('lifelingo_user')||'null')}catch{return null}};
 const key=()=>`lifelingo_social_${String(user()?.email||'guest').toLowerCase()}`;
 const avatars=[
-{id:0,cat:'girls',trait:'nerd',src:'./assets/4C99D87A-32DC-4B66-B834-F15257487B07.png'},
+{id:0,cat:'girls',trait:'cozy',src:'./assets/4C99D87A-32DC-4B66-B834-F15257487B07.png'},
 {id:1,cat:'girls',trait:'artist',src:'./assets/8C662C59-60C5-4AB8-A6D9-728B598D3EAE.png'},
 {id:2,cat:'girls',trait:'adventurer',src:'./assets/98B0EBC3-1F87-413C-AB08-C6AB17ACE492.png'},
-{id:3,cat:'girls',trait:'cool',src:'./assets/DA3E874A-7DD6-46E9-828B-3688B43FC385.png'},
-{id:4,cat:'girls',trait:'cozy',src:'./assets/F131F764-76F2-4E70-8F9A-270F2F64804E.png'},
-{id:10,cat:'boys',trait:'nerd',src:'./assets/1DCA1D8B-E146-4CFF-9803-F2FEDB77F21B.png'},
-{id:11,cat:'boys',trait:'artist',src:'./assets/496DCF3B-187B-4F7A-A5BA-F3DFE6D3DD48.png'},
-{id:12,cat:'boys',trait:'adventurer',src:'./assets/9BA0896E-6704-42C2-8BEF-1589C15C47A7.png'},
-{id:13,cat:'boys',trait:'cool',src:'./assets/B71F29C4-CA8E-4590-968A-20A8A1D079B9.png'},
-{id:14,cat:'boys',trait:'cozy',src:'./assets/D474CA0C-5506-46D8-9718-CF9DB25E2C73.png'}];
+{id:3,cat:'girls',trait:'nerd',src:'./assets/DA3E874A-7DD6-46E9-828B-3688B43FC385.png'},
+{id:4,cat:'girls',trait:'cool',src:'./assets/F131F764-76F2-4E70-8F9A-270F2F64804E.png'},
+{id:10,cat:'boys',trait:'artist',src:'./assets/1DCA1D8B-E146-4CFF-9803-F2FEDB77F21B.png'},
+{id:11,cat:'boys',trait:'cool',src:'./assets/496DCF3B-187B-4F7A-A5BA-F3DFE6D3DD48.png'},
+{id:12,cat:'boys',trait:'cozy',src:'./assets/9BA0896E-6704-42C2-8BEF-1589C15C47A7.png'},
+{id:13,cat:'boys',trait:'adventurer',src:'./assets/B71F29C4-CA8E-4590-968A-20A8A1D079B9.png'},
+{id:14,cat:'boys',trait:'nerd',src:'./assets/D474CA0C-5506-46D8-9718-CF9DB25E2C73.png'}];
 const VERSION=13;
 const save=s=>localStorage.setItem(key(),JSON.stringify(s));
 const load=()=>{try{return Object.assign({avatar:0,surpriseUsed:false,surpriseGender:null,surpriseVersion:VERSION},JSON.parse(localStorage.getItem(key())||'{}'))}catch{return{avatar:0,surpriseUsed:false,surpriseGender:null,surpriseVersion:VERSION}}};
