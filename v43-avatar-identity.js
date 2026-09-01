@@ -1,0 +1,8 @@
+(()=>{
+const $=s=>document.querySelector(s);
+function getUser(){try{return JSON.parse(localStorage.getItem('lifelingo_user')||'null')}catch{return null}}
+function displayName(){const u=getUser()||{};const raw=u.displayName||u.name||u.fullName||u.username||String(u.email||'').split('@')[0]||'You';return String(raw).trim()||'You'}
+function apply(){const root=$('#ll42Social');if(!root)return;const title=root.querySelector('.ll42SocialTop h3');if(title)title.textContent='Choose your LifeLingo avatar';const sub=root.querySelector('.ll42SocialTop p');if(sub)sub.textContent='Pick the one that feels like you.';root.querySelectorAll('.ll42Preset small').forEach(x=>x.remove());const picked=root.querySelector('.ll42Picked');if(picked){const b=picked.querySelector('b');const span=picked.querySelector('span');if(b)b.textContent=displayName();if(span)span.textContent='Your LifeLingo avatar'}root.querySelectorAll('.ll42Preset').forEach((b,i)=>{b.setAttribute('aria-label',`Avatar ${i+1}`);b.title=''})}
+async function shareMine(e){const b=e.target.closest('#ll42Social [data-share]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();const text=`I made my LifeLingo identity ✦ Pick your avatar and practice real-life English with me.`;const url=location.origin+location.pathname;try{if(navigator.share)await navigator.share({title:'My LifeLingo avatar',text,url});else{await navigator.clipboard.writeText(text+' '+url);alert('Share link copied!')}}catch{}}
+document.addEventListener('click',shareMine,true);document.addEventListener('click',()=>setTimeout(apply,0));setTimeout(apply,800);setInterval(apply,1500);
+})();

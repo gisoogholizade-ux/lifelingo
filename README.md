@@ -1,5 +1,16 @@
 # LifeLingo
 
-Interactive game-like language learning web app focused on realistic everyday scenarios, voice interaction and immersive UI.
+Game-like language learning web app focused on realistic everyday scenarios, voice interaction and immersive UI.
 
-This repository contains the standalone portfolio version of LifeLingo.
+## Current entry
+Open `v41.html` for the latest clean build.
+
+## Run locally
+Use a static HTTP server (recommended because the app loads files with `fetch`).
+
+Example: `python -m http.server 8080`
+
+Then open `http://localhost:8080/v41.html`.
+
+## Clone
+`git clone https://github.com/gisoogholizade-ux/lifelingo.git`

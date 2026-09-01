@@ -1,0 +1,4 @@
+/* V31: acquisition belongs before auth, never inside the learner dashboard */
+body.v31-signed-in #growthStrip{display:none!important}
+body.v31-signed-in #home{padding-top:0}
+body.v31-signed-in #home .paths{margin-top:18px}

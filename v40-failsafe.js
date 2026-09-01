@@ -1,0 +1,1 @@
+(()=>{const boot=document.getElementById('boot');if(!boot)return;setTimeout(()=>{if(document.getElementById('boot')){boot.innerHTML='<div style="text-align:center;padding:24px"><h3>LifeLingo did not finish loading.</h3><p style="opacity:.7">Reloading the stable build…</p></div>';location.replace('./v32.html?fallback='+Date.now()+location.search)},4500)})();
