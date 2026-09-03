@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - '.github/workflows/speak-runtime-debug.yml'
-      - '.github/scripts/speak-deadlock-acceptance.mjs'
+      - '.github/scripts/speak-deadlock-phases.mjs'
       - 'lifelingo-premium-speak.js'
       - 'v66.html'
   pull_request:
@@ -12,20 +12,51 @@ on:
   workflow_dispatch:
 
 jobs:
-  acceptance:
+  phases:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - phase: landing
+            engine: chromium
+            width: 390
+          - phase: airport
+            engine: chromium
+            width: 390
+          - phase: tenx
+            engine: chromium
+            width: 390
+          - phase: rapid
+            engine: chromium
+            width: 390
+          - phase: access
+            engine: chromium
+            width: 390
+          - phase: mobile
+            engine: chromium
+            width: 375
+          - phase: mobile
+            engine: chromium
+            width: 430
+          - phase: mobile
+            engine: webkit
+            width: 390
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Playwright Chromium and WebKit
+      - name: Install Playwright browser
         run: |
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium webkit
-      - name: Run deployed Speak input-deadlock acceptance
+          npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Run isolated Speak phase
         env:
           TARGET_URL: https://gisoogholizade-ux.github.io/lifelingo/
-        run: timeout --signal=KILL 180s node .github/scripts/speak-deadlock-acceptance.mjs
+          PHASE: ${{ matrix.phase }}
+          ENGINE: ${{ matrix.engine }}
+          WIDTH: ${{ matrix.width }}
+        run: timeout --signal=KILL 45s node .github/scripts/speak-deadlock-phases.mjs
