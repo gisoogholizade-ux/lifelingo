@@ -1,0 +1,34 @@
+name: LifeLingo Auth and Speak Stability
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate canonical auth client
+        run: |
+          node --check supabase-client.js
+          node --check lifelingo-auth-session-guard.js
+          node --check lifelingo-auth-fix.js
+          test "$(grep -Rho 'createClient(' supabase-client.js lifelingo-auth-session-guard.js lifelingo-auth-fix.js v66-app.js v67-speak-fix.js | wc -l)" -eq 1
+          grep -q "if(!data.session)" lifelingo-auth-session-guard.js
+          grep -q "No profile RPC is called here" lifelingo-auth-session-guard.js
+          grep -q "signOut({scope:'global'})" lifelingo-auth-session-guard.js
+      - name: Validate Free Speak access path
+        run: |
+          node --check v67-speak-fix.js
+          grep -q "ensureData(!s.free)" v67-speak-fix.js
+          grep -q "rpc('my_membership')" v67-speak-fix.js
+          grep -q "function waitForSession" v67-speak-fix.js
+          grep -q "function cleanupMission" v67-speak-fix.js
+          ! sed -n '/async function ensureData/,/function renderSpeakLanding/p' v67-speak-fix.js | grep -q "get_learning_home"
+          ! grep -q "Speaking access check timed out" v67-speak-fix.js
+          grep -q "v67-speak-fix.js?v=5" v66.html
