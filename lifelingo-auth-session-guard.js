@@ -9,6 +9,7 @@ const copy={
 };
 const tr=(group,key)=>copy[group][key][fa()?1:0];
 const waitForClient=()=>new Promise((resolve,reject)=>{if(window.llSupabase)return resolve(window.llSupabase);let done=false;const finish=(fn,v)=>{if(done)return;done=true;clearTimeout(timer);window.removeEventListener('lifelingo:supabase-ready',ready);window.removeEventListener('lifelingo:supabase-error',bad);fn(v)};const ready=()=>finish(resolve,window.llSupabase);const bad=()=>finish(reject,new Error('client unavailable'));const timer=setTimeout(()=>finish(reject,new Error('client timeout')),13000);window.addEventListener('lifelingo:supabase-ready',ready,{once:true});window.addEventListener('lifelingo:supabase-error',bad,{once:true})});
+function ensureSpeakInteractionGuard(){if(document.querySelector('script[data-lifelingo-speak-interaction-guard]'))return;const s=document.createElement('script');s.src='./lifelingo-speak-interaction-guard.js?v=1';s.async=false;s.dataset.lifelingoSpeakInteractionGuard='1';s.onerror=()=>console.error('[LifeLingo Speak interaction] guard failed to load');document.head.appendChild(s)}
 function authMessage(text,kind=''){const el=$('#authMsg');if(!el)return;el.textContent=text||'';el.className='feedback'+(kind?' '+kind:'')}
 function setBusy(btn,on,text){if(!btn)return;if(on){btn.dataset.guardOld=btn.textContent;btn.disabled=true;if(text)btn.textContent=text}else{btn.disabled=false;btn.textContent=btn.dataset.guardOld||btn.textContent;delete btn.dataset.guardOld}}
 function friendlySignupError(e){const m=String(e?.message||'');if(e instanceof TypeError||/load failed|failed to fetch|network/i.test(m))return tr('signup','network');if(/already registered|already exists/i.test(m))return fa()?'این ایمیل قبلاً ثبت شده است. وارد حساب شو.':'This email is already registered. Log in instead.';if(/invalid email/i.test(m))return tr('signup','email');return tr('signup','generic')}
@@ -38,6 +39,7 @@ async function logout(trigger){if(logoutPending)return;logoutPending=true;const 
 }
 function protectedGuard(){const app=$('#appScreen');if(!app||app.classList.contains('hidden'))return;waitForClient().then(sb=>sb.auth.getSession()).then(({data})=>{if(!data?.session){clearUserUi();try{history.replaceState(null,'',location.pathname+location.search)}catch{}}else document.documentElement.dataset.authenticated='true'}).catch(()=>{})}
 function install(){
+ ensureSpeakInteractionGuard();
  document.addEventListener('click',e=>{const reg=e.target.closest?.('#registerBtn');if(reg){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();signup();return}const out=e.target.closest?.('#logoutBtn,[data-header-logout],#logout,[data-logout],[data-signout]');if(out){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();logout(out)}},true);
  window.addEventListener('pageshow',protectedGuard);window.addEventListener('popstate',protectedGuard);window.addEventListener('hashchange',protectedGuard);
  protectedGuard();
