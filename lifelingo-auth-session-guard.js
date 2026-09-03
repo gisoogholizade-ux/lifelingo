@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const $=(s,r=document)=>r.querySelector(s);
-let signupPending=false,logoutPending=false,authSub=null;
+let signupPending=false,logoutPending=false;
 const fa=()=>document.documentElement.lang==='fa'||document.documentElement.dataset.language==='fa'||localStorage.getItem('lifelingo_language')==='fa';
 const copy={
  signup:{creating:['Creating account…','در حال ساخت حساب…'],confirm:['Account created. Check your email to continue, then log in.','حساب ساخته شد. ایمیلت را برای ادامه تأیید کن، سپس وارد شو.'],created:['Account created. Signing you in…','حساب ساخته شد. در حال ورود…'],name:['Enter your name.','نامت را وارد کن.'],email:['Enter a valid email.','یک ایمیل معتبر وارد کن.'],phone:['Enter a valid mobile number including country code.','شماره موبایل معتبر همراه با کد کشور وارد کن.'],password:['Use at least 8 characters for your password.','رمز عبور باید حداقل ۸ کاراکتر باشد.'],network:['Could not reach the secure signup service. Check your connection and try again.','اتصال به سرویس امن ثبت‌نام برقرار نشد. اینترنت را بررسی و دوباره امتحان کن.'],generic:['Could not create your account. Please try again.','ساخت حساب انجام نشد. دوباره امتحان کن.']},
@@ -25,7 +25,7 @@ function clearUserUi(){
   try{window.speechSynthesis?.cancel?.()}catch{}
   document.querySelectorAll('#editProfileModal,#partnerPrefsModal,#lessonModal').forEach(x=>x.classList.remove('show'));
   $('#onboarding')?.classList.add('hidden');$('#chatOverlay')?.classList.add('hidden');$('#speakMission')?.remove();
-  document.body.classList.remove('speakMissionActive');
+  document.body.classList.remove('speakMissionActive');delete document.documentElement.dataset.authenticated;
   const app=$('#appScreen');if(app)app.classList.add('hidden');const auth=$('#authScreen');if(auth)auth.classList.remove('hidden');
   ['homeRoot','learnRoot','speakRoot','partnersRoot','reviewRoot','profileRoot','proRoot','chatMessages','partnerPrefsRoot','editProfileRoot','onboardRoot'].forEach(id=>{const el=document.getElementById(id);if(el)el.replaceChildren()});
   try{Object.keys(sessionStorage).filter(k=>/^lifelingo_(avatar_identity|social_|chat_|partner_|profile_|user_)/i.test(k)).forEach(k=>sessionStorage.removeItem(k))}catch{}
@@ -36,11 +36,11 @@ async function logout(trigger){if(logoutPending)return;logoutPending=true;const 
    clearUserUi();try{history.replaceState(null,'',location.pathname+location.search)}catch{}location.replace(location.pathname+location.search);
  }catch(e){console.error('[LifeLingo logout failed]',e);showLogoutError();buttons.forEach(b=>setBusy(b,false));logoutPending=false}
 }
-function protectedGuard(){const app=$('#appScreen');if(!app||app.classList.contains('hidden'))return;waitForClient().then(sb=>sb.auth.getSession()).then(({data})=>{if(!data?.session){clearUserUi();try{history.replaceState(null,'',location.pathname+location.search)}catch{}}}).catch(()=>{})}
+function protectedGuard(){const app=$('#appScreen');if(!app||app.classList.contains('hidden'))return;waitForClient().then(sb=>sb.auth.getSession()).then(({data})=>{if(!data?.session){clearUserUi();try{history.replaceState(null,'',location.pathname+location.search)}catch{}}else document.documentElement.dataset.authenticated='true'}).catch(()=>{})}
 function install(){
  document.addEventListener('click',e=>{const reg=e.target.closest?.('#registerBtn');if(reg){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();signup();return}const out=e.target.closest?.('#logoutBtn,[data-header-logout],#logout,[data-logout],[data-signout]');if(out){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();logout(out)}},true);
  window.addEventListener('pageshow',protectedGuard);window.addEventListener('popstate',protectedGuard);window.addEventListener('hashchange',protectedGuard);
- waitForClient().then(sb=>{authSub?.data?.subscription?.unsubscribe?.();authSub=sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'||!session){clearUserUi()}if(event==='SIGNED_IN'&&session){document.documentElement.dataset.authenticated='true'}if(event==='TOKEN_REFRESHED'&&session){document.documentElement.dataset.authenticated='true'}})}).catch(()=>{});
+ protectedGuard();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
