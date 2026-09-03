@@ -32,7 +32,8 @@ jobs:
           grep -Eq "lifelingo-speak-interaction-guard.js\?v=[0-9]+" v66.html
       - name: Confirm original blocker and canonical Speak route are still auditable
         run: |
-          grep -q ".speakMission{position:fixed;inset:0;z-index:200" v67-polish.css
+          grep -q ".speakMission{position:relative;inset:auto;z-index:auto" v67-polish.css
+          grep -q "data-lifelingo-speak-interaction-guard" v66.html
           grep -q "function routeSpeak" v67-speak-fix.js
           grep -q "data-canonical-scenario" v67-speak-fix.js
           grep -q "stopImmediatePropagation" v67-speak-fix.js

@@ -178,6 +178,20 @@ input:disabled,
 textarea:disabled,
 select:disabled { opacity: .52; }
 
+/* Signup is taller than login: keep every field reachable on short phones. */
+.authWrap {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.authCard { margin-block: auto; }
+@media (max-width: 620px), (max-height: 760px) {
+  .authWrap {
+    place-items: start center;
+    padding-block: max(12px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-bottom));
+  }
+  .authCard { margin-block: 0; }
+}
+
 @media (prefers-contrast: more) {
   :root { --color-border: #b9b0ff80; }
   html[data-theme="light"] { --color-border: #4535b866; }

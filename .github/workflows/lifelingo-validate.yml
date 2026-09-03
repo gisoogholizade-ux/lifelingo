@@ -80,6 +80,11 @@ jobs:
           grep -q "speakNpcBody" lifelingo-premium-speak.js
           grep -q "speakCounter" lifelingo-premium-speak.js
           grep -q "v14-officer.svg" lifelingo-premium-speak.js
+          grep -q "SCENE_GEOMETRY" lifelingo-premium-speak.js
+          grep -q "walkableBounds" lifelingo-premium-speak.js
+          grep -q "SCENARIO_GENDERS" v67-speak-fix.js
+          grep -q "chooseVoice" v67-speak-fix.js
+          ! grep -q "translateX(35%)" lifelingo-premium-speak.css
           grep -q "ll-airport" lifelingo-premium-speak.css
           grep -q "ll-market" lifelingo-premium-speak.css
           grep -q "ll-office" lifelingo-premium-speak.css
