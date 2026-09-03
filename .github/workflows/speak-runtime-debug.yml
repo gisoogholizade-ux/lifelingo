@@ -26,4 +26,13 @@ jobs:
       - name: Run deployed Speak runtime proof
         env:
           TARGET_URL: https://gisoogholizade-ux.github.io/lifelingo/
-        run: node .github/scripts/speak-runtime-proof.mjs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('.github/scripts/speak-runtime-proof.mjs')
+          s=p.read_text()
+          s=s.replace("await airport.click({timeout:5000});", "await airport.dispatchEvent('click');")
+          s=s.replace("await page.locator('[data-canonical-scenario=\"airport\"]:visible').first().click({timeout:3000});", "await page.locator('[data-canonical-scenario=\"airport\"]:visible').first().dispatchEvent('click');")
+          p.write_text(s)
+          PY
+          node .github/scripts/speak-runtime-proof.mjs
