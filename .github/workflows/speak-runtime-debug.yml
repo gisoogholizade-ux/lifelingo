@@ -7,6 +7,7 @@ on:
       - '.github/scripts/speak-runtime-proof.mjs'
       - '.github/scripts/speak-airport-isolation.mjs'
       - '.github/scripts/speak-scene-isolation.mjs'
+      - '.github/scripts/speak-listener-isolation.mjs'
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -25,5 +26,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Isolate deployed Speak scene deadlock
-        run: node .github/scripts/speak-scene-isolation.mjs
+      - name: Trace exact deployed Speak click callback
+        env:
+          TARGET_URL: https://gisoogholizade-ux.github.io/lifelingo/
+        run: node .github/scripts/speak-listener-isolation.mjs
