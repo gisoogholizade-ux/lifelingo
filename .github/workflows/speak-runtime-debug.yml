@@ -4,18 +4,15 @@ on:
   push:
     paths:
       - '.github/workflows/speak-runtime-debug.yml'
-      - '.github/scripts/speak-runtime-proof.mjs'
-      - '.github/scripts/speak-airport-isolation.mjs'
-      - '.github/scripts/speak-scene-isolation.mjs'
-      - '.github/scripts/speak-premium-narrow.mjs'
-      - '.github/scripts/speak-premium-sync-split.mjs'
-      - '.github/scripts/speak-premium-exact-cause.mjs'
+      - '.github/scripts/speak-deadlock-acceptance.mjs'
+      - 'lifelingo-premium-speak.js'
+      - 'v66.html'
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 jobs:
-  diagnose:
+  acceptance:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -23,10 +20,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Playwright Chromium
+      - name: Install Playwright Chromium and WebKit
         run: |
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Prove exact Premium Speak deadlock writer
-        run: node .github/scripts/speak-premium-exact-cause.mjs
+          npx playwright install --with-deps chromium webkit
+      - name: Run deployed Speak input-deadlock acceptance
+        env:
+          TARGET_URL: https://gisoogholizade-ux.github.io/lifelingo/
+        run: node .github/scripts/speak-deadlock-acceptance.mjs
