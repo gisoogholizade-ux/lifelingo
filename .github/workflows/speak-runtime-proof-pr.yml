@@ -1,0 +1,25 @@
+name: Speak Runtime Proof PR
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  prove-input-blocker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Trace deployed Speak runtime
+        env:
+          TARGET_URL: https://gisoogholizade-ux.github.io/lifelingo/
+        run: node .github/scripts/speak-runtime-proof.mjs
