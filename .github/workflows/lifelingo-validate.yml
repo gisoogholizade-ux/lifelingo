@@ -22,12 +22,21 @@ jobs:
           node --check avatar-legacy-recovery.js
           node --check lifelingo-config.js
           node --check supabase-client.js
+          node --check lifelingo-auth-fix.js
+          node --check lifelingo-i18n.js
+          node --check lifelingo-i18n-dom.js
+          node --check lifelingo-frontend-stabilize.js
+          node --check scripts/frontend-audit.mjs
+      - name: Frontend inventory and locale audit
+        run: node scripts/frontend-audit.mjs
       - name: Check unified shell references
         run: |
           grep -q 'lifelingo-unified.css' v66.html
           grep -q 'v67-polish.css' v66.html
           grep -q 'v68-avatar.css' v66.html
           grep -q 'lifelingo-color-system.css' v66.html
+          grep -q 'lifelingo-i18n.css' v66.html
+          grep -q 'lifelingo-frontend-stabilize.css' v66.html
           grep -q 'lifelingo-color-system.css' admin-v2.html
           grep -q 'v69-avatar-system.js' v66.html
           grep -q 'avatar-legacy-recovery.js' v66.html
@@ -35,6 +44,9 @@ jobs:
           grep -q 'v66-app.js' v66.html
           grep -q 'v67-nav-bridge.js' v66.html
           grep -q 'v67-speak-fix.js' v66.html
+          grep -q 'lifelingo-frontend-stabilize.js' v66.html
+          grep -q 'openConversationUnit' lifelingo-frontend-stabilize.js
+          grep -q 'course_unit' lifelingo-frontend-stabilize.js
           grep -q '#speak' v59.html
           ! grep -q 'document.write' v59.html
       - name: Validate Avatar Surprise assets and configuration
@@ -71,7 +83,7 @@ jobs:
           grep -q 'html\[data-theme="light"\]' lifelingo-color-system.css
       - name: Guard against plaintext password storage
         run: |
-          ! grep -RniE 'localStorage.*password|password.*localStorage' v66*.js v67*.js v69*.js avatar-legacy-recovery.js v66.html
+          ! grep -RniE 'localStorage.*password|password.*localStorage' v66*.js v67*.js v69*.js lifelingo-*.js avatar-legacy-recovery.js v66.html
       - name: Verify migration files exist
         run: |
           test -f supabase/migrations/202609030003_unified_product_preferences_and_partner_hub.sql
@@ -81,3 +93,5 @@ jobs:
           test -f supabase/migrations/202609030007_avatar_identity_hardening.sql
           test -f supabase/migrations/202609030008_lock_down_avatar_identity_rpcs.sql
           test -f supabase/migrations/202609030009_canonical_avatar_catalog.sql
+          test -f supabase/migrations/202609031120_fix_partner_goal_and_age_matching.sql
+          test -f supabase/migrations/202609031230_frontend_stabilization_matching_profile.sql
