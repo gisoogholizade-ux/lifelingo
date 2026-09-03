@@ -16,6 +16,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check v66-app.js
+          node --check lifelingo-learn-route.js
           node --check v67-nav-bridge.js
           node --check v67-speak-fix.js
           node --check v69-avatar-system.js
@@ -45,6 +46,7 @@ jobs:
           grep -q 'avatar-legacy-recovery.js' v66.html
           grep -q 'lifelingo-config.js' v66.html
           grep -q 'v66-app.js' v66.html
+          grep -q 'lifelingo-learn-route.js' v66.html
           grep -q 'v67-nav-bridge.js' v66.html
           grep -q 'lifelingo-course-route-guard.js' v66.html
           grep -q 'v67-speak-fix.js' v66.html
