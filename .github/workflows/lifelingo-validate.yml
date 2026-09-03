@@ -16,6 +16,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check v66-app.js
+          node --check v67-nav-bridge.js
           node --check v67-speak-fix.js
           node --check supabase-client.js
       - name: Check unified shell references
@@ -23,6 +24,7 @@ jobs:
           grep -q 'lifelingo-unified.css' v66.html
           grep -q 'v67-polish.css' v66.html
           grep -q 'v66-app.js' v66.html
+          grep -q 'v67-nav-bridge.js' v66.html
           grep -q 'v67-speak-fix.js' v66.html
           grep -q '#speak' v59.html
           ! grep -q 'document.write' v59.html
