@@ -49,6 +49,6 @@ async function register(){
   setBusy(btn,true,'Creating account…');setMessage('');
   try{const client=await waitForClient();await new Promise(resolve=>setTimeout(resolve,0));const {data,error}=await client.auth.signUp({email,password,options:{data:{display_name:name,phone,contact_consent:!!$('#regConsent')?.checked}}});if(error)throw error;if(data?.session){location.reload();return}setMessage('Account created. Check your email if confirmation is required, then log in.')}catch(e){const c=reportFailure('signUp',e);setMessage(c.user)}finally{setBusy(btn,false)}
 }
-function install(){const loginBtn=$('#loginBtn'),registerBtn=$('#registerBtn');if(loginBtn)loginBtn.onclick=login;if(registerBtn)registerBtn.onclick=register;if(!window.llSupabase){[loginBtn,registerBtn].forEach(b=>{if(b)b.dataset.authWaiting='true'});window.addEventListener('lifelingo:supabase-ready',()=>[loginBtn,registerBtn].forEach(b=>{if(b)delete b.dataset.authWaiting}),{once:true})}}
+function install(){const loginBtn=$('#loginBtn');if(loginBtn)loginBtn.onclick=login;if(!window.llSupabase){if(loginBtn)loginBtn.dataset.authWaiting='true';window.addEventListener('lifelingo:supabase-ready',()=>{if(loginBtn)delete loginBtn.dataset.authWaiting},{once:true})}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
