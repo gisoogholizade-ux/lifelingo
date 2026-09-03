@@ -1,0 +1,1 @@
+Trigger PR synchronization after the diagnostic workflow was enabled on main.
