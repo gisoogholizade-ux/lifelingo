@@ -48,6 +48,9 @@ jobs:
           grep -q "1080" v69-avatar-system.js
           grep -q "1920" v69-avatar-system.js
           grep -q "QRCode" v69-avatar-system.js
+          grep -q "currentSession" v69-avatar-system.js
+          grep -q "failedImages" v69-avatar-system.js
+          grep -q "auth.getSession" avatar-legacy-recovery.js
           ! grep -q "localhost" lifelingo-config.js
       - name: Guard against plaintext password storage
         run: |

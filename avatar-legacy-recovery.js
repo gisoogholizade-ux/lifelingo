@@ -13,6 +13,7 @@ const bySrc={
 };
 const valid=new Set(Object.values(bySrc));
 function legacyId(){try{const u=JSON.parse(localStorage.getItem('lifelingo_user')||'null');const id=Number(u?.avatarId);if(Number.isInteger(id)&&valid.has(id))return id;const src=String(u?.avatarUrl||'').split('?')[0];return bySrc[src]??null}catch{return null}}
-async function run(){if(!window.llSupabase){window.addEventListener('lifelingo:supabase-ready',run,{once:true});return}try{const current=await llSupabase.rpc('get_avatar_identity');if(current.error)throw current.error;if(current.data?.avatar_id!=null)return;const id=legacyId();if(id==null)return;const r=await llSupabase.rpc('recover_legacy_avatar',{p_avatar:id});if(r.error)throw r.error;await window.LL_AVATAR?.reload?.();window.dispatchEvent(new CustomEvent('lifelingo:profile-updated'))}catch(e){console.warn('LifeLingo legacy avatar recovery skipped',e?.message||e)}}
+async function run(){if(!window.llSupabase){window.addEventListener('lifelingo:supabase-ready',run,{once:true});return}try{const session=(await llSupabase.auth.getSession()).data.session;if(!session)return;const current=await llSupabase.rpc('get_avatar_identity');if(current.error)throw current.error;if(current.data?.avatar_id!=null)return;const id=legacyId();if(id==null)return;const r=await llSupabase.rpc('recover_legacy_avatar',{p_avatar:id});if(r.error)throw r.error;await window.LL_AVATAR?.reload?.();window.dispatchEvent(new CustomEvent('lifelingo:profile-updated'))}catch(e){console.warn('LifeLingo legacy avatar recovery skipped',e?.message||e)}}
+window.addEventListener('lifelingo:user-changed',()=>setTimeout(run,80));
 setTimeout(run,700);
 })();
