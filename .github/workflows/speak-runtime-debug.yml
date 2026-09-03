@@ -14,7 +14,7 @@ on:
 jobs:
   acceptance:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,4 +28,4 @@ jobs:
       - name: Run deployed Speak input-deadlock acceptance
         env:
           TARGET_URL: https://gisoogholizade-ux.github.io/lifelingo/
-        run: node .github/scripts/speak-deadlock-acceptance.mjs
+        run: timeout --signal=KILL 180s node .github/scripts/speak-deadlock-acceptance.mjs
