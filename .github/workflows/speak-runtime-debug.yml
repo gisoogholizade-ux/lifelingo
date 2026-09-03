@@ -9,6 +9,7 @@ on:
       - '.github/scripts/speak-scene-isolation.mjs'
       - '.github/scripts/speak-premium-narrow.mjs'
       - '.github/scripts/speak-premium-sync-split.mjs'
+      - '.github/scripts/speak-premium-exact-cause.mjs'
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -27,5 +28,5 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Split Premium Speak sync deadlock causes
-        run: node .github/scripts/speak-premium-sync-split.mjs
+      - name: Prove exact Premium Speak deadlock writer
+        run: node .github/scripts/speak-premium-exact-cause.mjs
