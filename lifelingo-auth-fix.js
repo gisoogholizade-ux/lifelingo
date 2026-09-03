@@ -48,11 +48,12 @@ async function register(){
   }finally{setBusy(btn,false)}
 }
 function loadPartnerPatch(){
-  if(document.querySelector('script[data-lifelingo-partner-fix]'))return;
+  if(document.querySelector('script[data-lifelingo-partner-ui-v2]'))return;
   const s=document.createElement('script');
-  s.src='./lifelingo-partner-fix.js?v=1';
-  s.dataset.lifelingoPartnerFix='true';
-  s.defer=true;
+  s.src='./lifelingo-partner-ui-v2.js?v=2';
+  s.dataset.lifelingoPartnerUiV2='true';
+  s.async=false;
+  s.onerror=()=>console.warn('[LifeLingo Partner UI] patch script failed to load');
   document.body.appendChild(s);
 }
 function install(){
