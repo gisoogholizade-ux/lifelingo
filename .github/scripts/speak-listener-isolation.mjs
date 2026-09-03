@@ -56,11 +56,6 @@ console.log('LANDING_STATE',JSON.stringify(await page.evaluate(()=>({hash:locati
 await page.evaluate(()=>{
   const sb=window.llSupabase;if(!sb)throw new Error('llSupabase unavailable');
   sb.auth.getSession=async()=>({data:{session:{access_token:'DIAGNOSTIC_FREE_MISSION'}},error:null});
-  const ss=window.speechSynthesis;
-  if(ss?.cancel){
-    const nativeCancel=ss.cancel.bind(ss);
-    try{ss.cancel=()=>{console.warn('[SPEECH-CANCEL-ENTER]');const r=nativeCancel();console.warn('[SPEECH-CANCEL-EXIT]');return r}}catch(e){console.warn('[SPEECH-CANCEL-WRAP-FAILED] '+e.message)}
-  }
   window.__SPEAK_ISO.active=true;
 });
 const airport=page.locator('[data-canonical-scenario="airport"]:visible').first();
@@ -68,7 +63,21 @@ console.log('AIRPORT',JSON.stringify(await airport.evaluate(el=>({tag:el.tagName
 try{
   await airport.dispatchEvent('click',{},{timeout:6000});
   console.log('DISPATCH_RETURNED');
-}catch(e){console.log('DISPATCH_TIMEOUT',e.message)}
-try{console.log('ISO_STATE',JSON.stringify(await page.evaluate(()=>window.__SPEAK_ISO)))}catch(e){console.log('ISO_STATE_UNREADABLE',e.message)}
-try{console.log('POST_STATE',JSON.stringify(await page.evaluate(()=>({hash:location.hash,mission:document.querySelector('#speakMission')?.outerHTML?.slice(0,200)||null,missionParent:document.querySelector('#speakMission')?.parentElement?.id||null,inert:[...document.querySelectorAll('[inert]')].map(x=>x.id||x.className||x.tagName),bodyClass:document.body.className,bodyPointer:getComputedStyle(document.body).pointerEvents,htmlPointer:getComputedStyle(document.documentElement).pointerEvents})))}catch(e){console.log('POST_STATE_UNREADABLE',e.message)}
+}catch(e){console.log('DISPATCH_TIMEOUT',e.message.split('\n')[0])}
+try{
+  const iso=await page.evaluate(()=>window.__SPEAK_ISO);
+  console.log('ISO_STATE',JSON.stringify(iso));
+}catch(e){console.log('ISO_STATE_UNREADABLE',e.message)}
+try{
+  const post=await page.evaluate(()=>({
+    hash:location.hash,
+    mission:document.querySelector('#speakMission')?.outerHTML?.slice(0,200)||null,
+    missionParent:document.querySelector('#speakMission')?.parentElement?.id||null,
+    inert:[...document.querySelectorAll('[inert]')].map(x=>x.id||x.className||x.tagName),
+    bodyClass:document.body.className,
+    bodyPointer:getComputedStyle(document.body).pointerEvents,
+    htmlPointer:getComputedStyle(document.documentElement).pointerEvents
+  }));
+  console.log('POST_STATE',JSON.stringify(post));
+}catch(e){console.log('POST_STATE_UNREADABLE',e.message)}
 await browser.close().catch(()=>{});
