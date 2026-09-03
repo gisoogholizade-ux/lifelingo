@@ -26,6 +26,8 @@ jobs:
           node --check lifelingo-i18n.js
           node --check lifelingo-i18n-dom.js
           node --check lifelingo-frontend-stabilize.js
+          node --check lifelingo-course-route-guard.js
+          node --check lifelingo-matching-state.js
           node --check scripts/frontend-audit.mjs
       - name: Frontend inventory and locale audit
         run: node scripts/frontend-audit.mjs
@@ -43,9 +45,13 @@ jobs:
           grep -q 'lifelingo-config.js' v66.html
           grep -q 'v66-app.js' v66.html
           grep -q 'v67-nav-bridge.js' v66.html
+          grep -q 'lifelingo-course-route-guard.js' v66.html
           grep -q 'v67-speak-fix.js' v66.html
           grep -q 'lifelingo-frontend-stabilize.js' v66.html
+          grep -q 'lifelingo-matching-state.js' v66.html
           grep -q 'openConversationUnit' lifelingo-frontend-stabilize.js
+          grep -q 'COURSE_SCENARIO_MAP' v67-speak-fix.js
+          grep -q "'c3-conversation':'apartment'" v67-speak-fix.js
           grep -q 'course_unit' lifelingo-frontend-stabilize.js
           grep -q '#speak' v59.html
           ! grep -q 'document.write' v59.html
