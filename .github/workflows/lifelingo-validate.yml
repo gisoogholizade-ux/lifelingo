@@ -37,17 +37,22 @@ jobs:
           ! grep -q 'document.write' v59.html
       - name: Validate Avatar Surprise assets and configuration
         run: |
-          test "$(grep -o "cat:'girls'" v42-social.js | wc -l)" -eq 5
-          test "$(grep -o "cat:'boys'" v42-social.js | wc -l)" -eq 5
+          test "$(grep -o "gender:'girls'" v69-avatar-system.js | wc -l)" -eq 5
+          test "$(grep -o "gender:'boys'" v69-avatar-system.js | wc -l)" -eq 5
+          test "$(find assets -maxdepth 1 -type f -name '*.png' | grep -E '(4C99D87A|8C662C59|98B0EBC3|DA3E874A|F131F764|1DCA1D8B|496DCF3B|9BA0896E|B71F29C4|D474CA0C)' | wc -l)" -eq 10
           grep -q "claim_random_avatar" v69-avatar-system.js
           grep -q "recover_legacy_avatar" avatar-legacy-recovery.js
           grep -q "profile_photo_url" supabase/migrations/202609030005_restore_avatar_surprise_profile_photo_separation.sql
           grep -q "avatar_assigned_at" supabase/migrations/202609030007_avatar_identity_hardening.sql
           grep -q "revoke execute" supabase/migrations/202609030008_lock_down_avatar_identity_rpcs.sql
+          grep -q "Canonical LifeLingo avatar catalog" supabase/migrations/202609030009_canonical_avatar_catalog.sql
           grep -q "remove_profile_photo" v69-avatar-system.js
           grep -q "1080" v69-avatar-system.js
           grep -q "1920" v69-avatar-system.js
           grep -q "QRCode" v69-avatar-system.js
+          grep -q "MY LIFELINGO CONFESSION" v69-avatar-system.js
+          grep -q "CONFESSIONS" v69-avatar-system.js
+          grep -q "sessionStorage" v69-avatar-system.js
           grep -q "currentSession" v69-avatar-system.js
           grep -q "failedImages" v69-avatar-system.js
           grep -q "auth.getSession" avatar-legacy-recovery.js
@@ -63,3 +68,4 @@ jobs:
           test -f supabase/migrations/202609030006_avatar_display_partner_inbox.sql
           test -f supabase/migrations/202609030007_avatar_identity_hardening.sql
           test -f supabase/migrations/202609030008_lock_down_avatar_identity_rpcs.sql
+          test -f supabase/migrations/202609030009_canonical_avatar_catalog.sql
