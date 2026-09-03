@@ -1,10 +1,12 @@
 name: Speak Runtime Debug
 
-# diagnostic revision 2
 on:
   push:
     paths:
       - '.github/workflows/speak-runtime-debug.yml'
+      - '.github/scripts/speak-runtime-proof.mjs'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -16,102 +18,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Playwright
+      - name: Install Playwright Chromium
         run: |
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Run production Speak diagnostics
+      - name: Run deployed Speak runtime proof
         env:
           TARGET_URL: https://gisoogholizade-ux.github.io/lifelingo/
-        run: |
-          cat > /tmp/speak-debug.mjs <<'EOF'
-          import { chromium } from 'playwright';
-
-          const browser = await chromium.launch({headless:true});
-          const page = await browser.newPage({viewport:{width:390,height:844}, isMobile:true, hasTouch:true});
-          const logs=[];
-          page.on('console', msg => logs.push(`[CONSOLE:${msg.type()}] ${msg.text()}`));
-          page.on('pageerror', err => logs.push(`[PAGEERROR] ${err.stack||err.message}`));
-
-          await page.addInitScript(() => {
-            window.__LLDBG = {clickRegs:[], clickFires:[], hashes:0, push:0, replace:0, mutations:0};
-            const origAdd = EventTarget.prototype.addEventListener;
-            EventTarget.prototype.addEventListener = function(type, listener, options){
-              if(type==='click' && typeof listener==='function'){
-                const src = String(listener).slice(0,180).replace(/\s+/g,' ');
-                const reg = {target:this===document?'document':this===window?'window':(this?.tagName||this?.constructor?.name||'other'), src};
-                window.__LLDBG.clickRegs.push(reg);
-                const wrapped = function(...args){
-                  try { window.__LLDBG.clickFires.push({target:reg.target, src:reg.src, eventTarget:args[0]?.target?.outerHTML?.slice(0,180)||''}); } catch {}
-                  return listener.apply(this,args);
-                };
-                return origAdd.call(this,type,wrapped,options);
-              }
-              return origAdd.call(this,type,listener,options);
-            };
-            const opush=history.pushState.bind(history), oreplace=history.replaceState.bind(history);
-            history.pushState=(...a)=>{window.__LLDBG.push++;return opush(...a)};
-            history.replaceState=(...a)=>{window.__LLDBG.replace++;return oreplace(...a)};
-            window.addEventListener('hashchange',()=>window.__LLDBG.hashes++);
-            const OMO=window.MutationObserver;
-            window.MutationObserver = class extends OMO {
-              constructor(cb){super((m,o)=>{window.__LLDBG.mutations += m.length; return cb(m,o)})}
-            };
-          });
-
-          await page.goto(process.env.TARGET_URL,{waitUntil:'networkidle',timeout:60000});
-          await page.waitForTimeout(2500);
-          await page.evaluate(()=>{
-            document.querySelector('#authScreen')?.classList.add('hidden');
-            document.querySelector('#appScreen')?.classList.remove('hidden');
-            document.querySelector('#onboarding')?.classList.add('hidden');
-          });
-          await page.waitForTimeout(500);
-
-          const snap = async label => page.evaluate(label=>{
-            const one = s => {const el=document.querySelector(s); if(!el)return null; const r=el.getBoundingClientRect(); return {sel:s,tagName:el.tagName,id:el.id,className:el.className,rect:{x:r.x,y:r.y,width:r.width,height:r.height},display:getComputedStyle(el).display,visibility:getComputedStyle(el).visibility,opacity:getComputedStyle(el).opacity,position:getComputedStyle(el).position,zIndex:getComputedStyle(el).zIndex,pointerEvents:getComputedStyle(el).pointerEvents,inert:el.hasAttribute('inert')};};
-            const active=[...document.querySelectorAll('.view.on')].map(x=>x.id);
-            return {label,url:location.href,hash:location.hash,active,bodyClass:document.body.className,bodyStyle:document.body.style.cssText,htmlClass:document.documentElement.className,htmlStyle:document.documentElement.style.cssText,inert:[...document.querySelectorAll('[inert]')].map(x=>({tagName:x.tagName,id:x.id,className:x.className})),mission:one('#speakMission'),speakView:one('#view-speak'),app:one('#appScreen')};
-          },label);
-
-          console.log('SNAP_BEFORE',JSON.stringify(await snap('before')));
-          const home = page.locator('[data-nav="home"]').first();
-          if(await home.count()) await home.click({timeout:5000});
-          await page.waitForTimeout(100);
-          const beforeUrl=page.url();
-          const speak = page.locator('[data-nav="speak"]').first();
-          console.log('EXACT_CLICK_ELEMENT',JSON.stringify(await speak.evaluate(el=>({tagName:el.tagName,id:el.id,className:el.className,outerHTML:el.outerHTML}))));
-          await speak.click({timeout:5000});
-          await page.waitForTimeout(250);
-          console.log('URL_BEFORE_CLICK',beforeUrl);
-          console.log('SNAP_AFTER',JSON.stringify(await snap('after')));
-
-          const points = await page.evaluate(()=>{
-            const selectors=['[data-nav="home"]','[data-nav="learn"]','#topAvatar','#view-speak'];
-            const out={};
-            const desc=el=>{if(!el)return null;const cs=getComputedStyle(el);return{tagName:el.tagName,id:el.id,className:el.className,position:cs.position,zIndex:cs.zIndex,pointerEvents:cs.pointerEvents,display:cs.display,visibility:cs.visibility,opacity:cs.opacity}};
-            for(const s of selectors){const target=document.querySelector(s);if(!target)continue;const r=target.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;out[s]={point:{x,y},top:desc(document.elementFromPoint(x,y)),stack:document.elementsFromPoint(x,y).slice(0,10).map(desc)};}
-            const x=innerWidth/2,y=innerHeight/2;out.center={point:{x,y},top:desc(document.elementFromPoint(x,y)),stack:document.elementsFromPoint(x,y).slice(0,10).map(desc)};
-            const candidates=[...document.querySelectorAll('#speakMission,.speakMission,.speakMissionShell,.speakCinema,dialog,.modal,.backdrop,[class*="overlay" i],[class*="scene" i],canvas')].map(el=>{const r=el.getBoundingClientRect(),cs=getComputedStyle(el);return{tagName:el.tagName,id:el.id,className:el.className,rect:{x:r.x,y:r.y,width:r.width,height:r.height},position:cs.position,zIndex:cs.zIndex,pointerEvents:cs.pointerEvents,display:cs.display,visibility:cs.visibility,opacity:cs.opacity}});
-            return {out,candidates};
-          });
-          console.log('HIT_TESTS',JSON.stringify(points));
-
-          const alive = await page.evaluate(()=>new Promise(resolve=>{const t=performance.now();setTimeout(()=>resolve({elapsed:performance.now()-t}),100)}));
-          console.log('MAIN_THREAD_TIMER',JSON.stringify(alive));
-          console.log('DEBUG_COUNTERS',JSON.stringify(await page.evaluate(()=>window.__LLDBG)));
-
-          for (const sel of ['[data-nav="home"]','[data-nav="learn"]','[data-nav="partners"]','[data-nav="profile"]']) {
-            try {
-              const el=page.locator(sel).first();
-              await el.click({timeout:2000});
-              await page.waitForTimeout(120);
-              console.log('POST_SPEAK_CLICK',sel,JSON.stringify({hash:await page.evaluate(()=>location.hash),active:await page.evaluate(()=>[...document.querySelectorAll('.view.on')].map(x=>x.id))}));
-            } catch(e) { console.log('POST_SPEAK_CLICK_FAIL',sel,e.message); }
-          }
-
-          console.log('BROWSER_LOGS',JSON.stringify(logs));
-          await browser.close();
-          EOF
-          node /tmp/speak-debug.mjs
+        run: node .github/scripts/speak-runtime-proof.mjs
