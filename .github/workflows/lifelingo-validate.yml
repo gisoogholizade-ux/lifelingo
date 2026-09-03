@@ -43,6 +43,7 @@ jobs:
           grep -q "recover_legacy_avatar" avatar-legacy-recovery.js
           grep -q "profile_photo_url" supabase/migrations/202609030005_restore_avatar_surprise_profile_photo_separation.sql
           grep -q "avatar_assigned_at" supabase/migrations/202609030007_avatar_identity_hardening.sql
+          grep -q "revoke execute" supabase/migrations/202609030008_lock_down_avatar_identity_rpcs.sql
           grep -q "remove_profile_photo" v69-avatar-system.js
           grep -q "1080" v69-avatar-system.js
           grep -q "1920" v69-avatar-system.js
@@ -58,3 +59,4 @@ jobs:
           test -f supabase/migrations/202609030005_restore_avatar_surprise_profile_photo_separation.sql
           test -f supabase/migrations/202609030006_avatar_display_partner_inbox.sql
           test -f supabase/migrations/202609030007_avatar_identity_hardening.sql
+          test -f supabase/migrations/202609030008_lock_down_avatar_identity_rpcs.sql
