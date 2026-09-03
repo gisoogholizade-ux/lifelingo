@@ -1,0 +1,45 @@
+name: LifeLingo Auth Safety
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  auth-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check auth guard JavaScript syntax
+        run: |
+          node --check lifelingo-auth-session-guard.js
+          node --check lifelingo-admin-auth-guard.js
+          node --check supabase-client.js
+      - name: Validate signup sequencing
+        run: |
+          grep -q "auth.signUp" lifelingo-auth-session-guard.js
+          grep -q "data.session" lifelingo-auth-session-guard.js
+          grep -q "data?.user" lifelingo-auth-session-guard.js
+          grep -q "display_name:name" lifelingo-auth-session-guard.js
+          grep -q "contact_consent" lifelingo-auth-session-guard.js
+          ! grep -q "update_unified_profile" lifelingo-auth-session-guard.js
+          ! grep -qiE "service_role|localStorage.*password|password.*localStorage" lifelingo-auth-session-guard.js lifelingo-admin-auth-guard.js
+      - name: Validate canonical logout safety
+        run: |
+          grep -q "auth.signOut({scope:'global'})" lifelingo-auth-session-guard.js
+          grep -q "removeAllChannels" lifelingo-auth-session-guard.js
+          grep -q "clearUserUi" lifelingo-auth-session-guard.js
+          grep -q "pageshow" lifelingo-auth-session-guard.js
+          grep -q "popstate" lifelingo-auth-session-guard.js
+          grep -q "auth.signOut({scope:'global'})" lifelingo-admin-auth-guard.js
+          grep -q "removeAllChannels" lifelingo-admin-auth-guard.js
+      - name: Validate guard integration
+        run: |
+          grep -q "lifelingo-auth-session-guard.js" supabase-client.js
+          grep -q "lifelingo-admin-auth-guard.js" supabase-client.js
+          ! grep -q "onAuthStateChange" lifelingo-auth-session-guard.js
+          grep -q "persistSession:true" supabase-client.js
+          grep -q "autoRefreshToken:true" supabase-client.js
