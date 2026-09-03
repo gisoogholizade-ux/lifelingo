@@ -23,12 +23,13 @@ async function createAuthView(width){
     <section id="appScreen" class="hidden"></section>
     <form id="chatComposer"><input id="chatInput"></form>
     <div id="toast"></div>
-  </body></html>`,{url:'https://example.test/v66.html',runScripts:'outside-only',pretendToBeVisual:true});
+  </body></html>`,{url:'https://gisoogholizade-ux.github.io/lifelingo/v66.html',runScripts:'outside-only',pretendToBeVisual:true});
   const {window}=dom;
   const logs=[];
   Object.defineProperty(window,'innerWidth',{value:width,configurable:true});
   window.scrollTo=()=>{};
   window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
+  window.LIFELINGO_CONFIG={publicUrl:'https://gisoogholizade-ux.github.io/lifelingo/'};
   window.console.info=(...args)=>logs.push(args);
   window.llSupabase={auth:{async getSession(){return{data:{session:null},error:null}},onAuthStateChange(){return{data:{subscription:{unsubscribe(){}}}}}}};
   const source=await readFile(new URL('../v66-app.js',import.meta.url),'utf8');
@@ -72,6 +73,7 @@ test('canonical signup sends once and does not call a profile RPC without a sess
       assert.equal(payload.email,'new.user@example.test');
       assert.equal(payload.options.data.display_name,'New User');
       assert.equal(payload.options.data.phone,'+989121234567');
+      assert.equal(payload.options.emailRedirectTo,'https://gisoogholizade-ux.github.io/lifelingo/');
       return{data:{user:{id:'new-user'},session:null},error:null};
     };
     window.llSupabase.rpc=async()=>{rpcCalls++;return{data:null,error:null}};
@@ -90,4 +92,27 @@ test('canonical signup sends once and does not call a profile RPC without a sess
     assert.match(window.document.querySelector('#authMsg').textContent,/Account created\. Check your email/);
     assert.equal(window.document.querySelector('#registerBtn').disabled,false);
   }finally{app.close()}
+});
+
+test('signup exposes invalid-email and rate-limit failures instead of a generic error',async()=>{
+  for(const sample of [
+    {error:Object.assign(new Error('Email address is invalid'),{code:'email_address_invalid',status:400}),expected:/cannot receive a LifeLingo confirmation/},
+    {error:Object.assign(new Error('email rate limit exceeded'),{code:'over_email_send_rate_limit',status:429}),expected:/Too many confirmation emails/}
+  ]){
+    const app=await createAuthView(390);
+    try{
+      const {window}=app;
+      window.llSupabase.auth.signUp=async()=>({data:{user:null,session:null},error:sample.error});
+      const guard=await readFile(new URL('../lifelingo-auth-session-guard.js',import.meta.url),'utf8');
+      window.eval(guard);
+      window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
+      window.document.querySelector('#regName').value='New User';
+      window.document.querySelector('#regEmail').value='new.user@example.test';
+      window.document.querySelector('#regPhone').value='+989121234567';
+      window.document.querySelector('#regPassword').value='safe-password';
+      window.document.querySelector('#registerBtn').click();
+      await delay(30);
+      assert.match(window.document.querySelector('#authMsg').textContent,sample.expected);
+    }finally{app.close()}
+  }
 });

@@ -22,7 +22,10 @@ jobs:
           grep -q "if(!data.session)" lifelingo-auth-session-guard.js
           grep -q "No profile RPC is called here" lifelingo-auth-session-guard.js
           grep -q "signOut({scope:'global'})" lifelingo-auth-session-guard.js
-          grep -q "lifelingo-auth-session-guard.js?v=1" v66.html
+          grep -q "lifelingo-auth-session-guard.js?v=3" v66.html
+          grep -q "data-lifelingo-auth-session-guard" v66.html
+          grep -q "emailRedirectTo:confirmationRedirect()" lifelingo-auth-session-guard.js
+          grep -q "over_email_send_rate_limit" lifelingo-auth-session-guard.js
       - name: Validate Free Speak access path
         run: |
           node --check v67-speak-fix.js
