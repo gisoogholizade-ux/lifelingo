@@ -47,6 +47,14 @@ async function register(){
     setMessage(e?.message||'Could not create account. Please try again.');
   }finally{setBusy(btn,false)}
 }
+function loadPartnerPatch(){
+  if(document.querySelector('script[data-lifelingo-partner-fix]'))return;
+  const s=document.createElement('script');
+  s.src='./lifelingo-partner-fix.js?v=1';
+  s.dataset.lifelingoPartnerFix='true';
+  s.defer=true;
+  document.body.appendChild(s);
+}
 function install(){
   const loginBtn=$('#loginBtn'),registerBtn=$('#registerBtn');
   if(loginBtn)loginBtn.onclick=login;
@@ -55,6 +63,7 @@ function install(){
     [loginBtn,registerBtn].forEach(b=>{if(b)b.dataset.authWaiting='true'});
     window.addEventListener('lifelingo:supabase-ready',()=>[loginBtn,registerBtn].forEach(b=>{if(b)delete b.dataset.authWaiting}),{once:true});
   }
+  loadPartnerPatch();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
