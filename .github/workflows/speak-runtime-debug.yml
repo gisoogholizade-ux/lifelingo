@@ -6,6 +6,7 @@ on:
       - '.github/workflows/speak-runtime-debug.yml'
       - '.github/scripts/speak-runtime-proof.mjs'
       - '.github/scripts/speak-airport-isolation.mjs'
+      - '.github/scripts/speak-scene-isolation.mjs'
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -24,5 +25,5 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Binary-isolate deployed Speak deadlock
-        run: node .github/scripts/speak-airport-isolation.mjs
+      - name: Isolate deployed Speak scene deadlock
+        run: node .github/scripts/speak-scene-isolation.mjs
