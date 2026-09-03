@@ -18,20 +18,38 @@ jobs:
           node --check v66-app.js
           node --check v67-nav-bridge.js
           node --check v67-speak-fix.js
+          node --check v69-avatar-system.js
+          node --check lifelingo-config.js
           node --check supabase-client.js
       - name: Check unified shell references
         run: |
           grep -q 'lifelingo-unified.css' v66.html
           grep -q 'v67-polish.css' v66.html
+          grep -q 'v68-avatar.css' v66.html
+          grep -q 'v69-avatar-system.js' v66.html
+          grep -q 'lifelingo-config.js' v66.html
           grep -q 'v66-app.js' v66.html
           grep -q 'v67-nav-bridge.js' v66.html
           grep -q 'v67-speak-fix.js' v66.html
           grep -q '#speak' v59.html
           ! grep -q 'document.write' v59.html
+      - name: Validate Avatar Surprise assets and configuration
+        run: |
+          test "$(grep -o "cat:'girls'" v42-social.js | wc -l)" -eq 5
+          test "$(grep -o "cat:'boys'" v42-social.js | wc -l)" -eq 5
+          grep -q "claim_random_avatar" v69-avatar-system.js
+          grep -q "profile_photo_url" supabase/migrations/202609030005_restore_avatar_surprise_profile_photo_separation.sql
+          grep -q "remove_profile_photo" v69-avatar-system.js
+          grep -q "1080" v69-avatar-system.js
+          grep -q "1920" v69-avatar-system.js
+          grep -q "QRCode" v69-avatar-system.js
+          ! grep -q "localhost" lifelingo-config.js
       - name: Guard against plaintext password storage
         run: |
-          ! grep -RniE 'localStorage.*password|password.*localStorage' v66*.js v67*.js v66.html
+          ! grep -RniE 'localStorage.*password|password.*localStorage' v66*.js v67*.js v69*.js v66.html
       - name: Verify migration files exist
         run: |
           test -f supabase/migrations/202609030003_unified_product_preferences_and_partner_hub.sql
           test -f supabase/migrations/202609030004_protect_premium_legacy_missions.sql
+          test -f supabase/migrations/202609030005_restore_avatar_surprise_profile_photo_separation.sql
+          test -f supabase/migrations/202609030006_avatar_display_partner_inbox.sql
