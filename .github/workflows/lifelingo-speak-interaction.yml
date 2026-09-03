@@ -1,0 +1,37 @@
+name: LifeLingo Speak Interaction Safety
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Speak interaction guard syntax
+        run: |
+          node --check lifelingo-speak-interaction-guard.js
+          node --check lifelingo-auth-session-guard.js
+      - name: Assert fullscreen blocker is neutralized
+        run: |
+          grep -q "#view-speak #speakMission.speakMission" lifelingo-speak-interaction-guard.js
+          grep -q "position:relative!important" lifelingo-speak-interaction-guard.js
+          grep -q "root.replaceChildren(mission)" lifelingo-speak-interaction-guard.js
+          grep -q "cleanupMission('left-speak-route')" lifelingo-speak-interaction-guard.js
+          grep -q "cleanupMission('speak-init-error')" lifelingo-speak-interaction-guard.js
+          grep -q "cleanupMission('global-navigation')" lifelingo-speak-interaction-guard.js
+          grep -q "removeAttribute('aria-modal')" lifelingo-speak-interaction-guard.js
+          grep -q "removeAttribute('inert')" lifelingo-speak-interaction-guard.js
+          grep -q "style.pointerEvents=''" lifelingo-speak-interaction-guard.js
+          grep -q "lifelingo-speak-interaction-guard.js?v=1" lifelingo-auth-session-guard.js
+      - name: Confirm original blocker and canonical Speak route are still auditable
+        run: |
+          grep -q ".speakMission{position:fixed;inset:0;z-index:200" v67-polish.css
+          grep -q "function routeSpeak" v67-speak-fix.js
+          grep -q "data-canonical-scenario" v67-speak-fix.js
+          grep -q "stopImmediatePropagation" v67-speak-fix.js
