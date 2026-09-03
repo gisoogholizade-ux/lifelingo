@@ -19,6 +19,8 @@ jobs:
           node --check lifelingo-learn-route.js
           node --check v67-nav-bridge.js
           node --check v67-speak-fix.js
+          node --check lifelingo-premium-speak.js
+          node --check lifelingo-brand-renderer.js
           node --check v69-avatar-system.js
           node --check avatar-legacy-recovery.js
           node --check lifelingo-config.js
@@ -41,6 +43,8 @@ jobs:
           grep -q 'lifelingo-color-system.css' v66.html
           grep -q 'lifelingo-i18n.css' v66.html
           grep -q 'lifelingo-frontend-stabilize.css' v66.html
+          grep -q 'lifelingo-premium-speak.css' v66.html
+          grep -q 'lifelingo-brand-renderer.css' v66.html
           grep -q 'lifelingo-color-system.css' admin-v2.html
           grep -q 'v69-avatar-system.js' v66.html
           grep -q 'avatar-legacy-recovery.js' v66.html
@@ -50,6 +54,8 @@ jobs:
           grep -q 'v67-nav-bridge.js' v66.html
           grep -q 'lifelingo-course-route-guard.js' v66.html
           grep -q 'v67-speak-fix.js' v66.html
+          grep -q 'lifelingo-premium-speak.js' v66.html
+          grep -q 'lifelingo-brand-renderer.js' v66.html
           grep -q 'lifelingo-fa-completion.js' v66.html
           grep -q 'lifelingo-frontend-stabilize.js' v66.html
           grep -q 'lifelingo-matching-state.js' v66.html
@@ -59,6 +65,37 @@ jobs:
           grep -q 'course_unit' lifelingo-frontend-stabilize.js
           grep -q '#speak' v59.html
           ! grep -q 'document.write' v59.html
+      - name: Validate premium Speak state machine
+        run: |
+          grep -q "ENTERING" lifelingo-premium-speak.js
+          grep -q "LISTENING" lifelingo-premium-speak.js
+          grep -q "THINKING" lifelingo-premium-speak.js
+          grep -q "SPEAKING" lifelingo-premium-speak.js
+          grep -q "REACTING_POSITIVE" lifelingo-premium-speak.js
+          grep -q "REACTING_CONFUSED" lifelingo-premium-speak.js
+          grep -q "MISSION_SUCCESS" lifelingo-premium-speak.js
+          grep -q "prefers-reduced-motion" lifelingo-premium-speak.css
+          grep -q "visibilitychange" lifelingo-premium-speak.js
+          grep -q "speakMic" lifelingo-premium-speak.js
+          grep -q "speakNpcBody" lifelingo-premium-speak.js
+          grep -q "speakCounter" lifelingo-premium-speak.js
+          grep -q "v14-officer.svg" lifelingo-premium-speak.js
+          grep -q "ll-airport" lifelingo-premium-speak.css
+          grep -q "ll-market" lifelingo-premium-speak.css
+          grep -q "ll-office" lifelingo-premium-speak.css
+      - name: Validate full brand rendering and story export
+        run: |
+          grep -q 'viewBox="0 0 512 512"' lifelingo-logo-v3.svg
+          grep -q "lifelingo-logo-v3.svg" lifelingo-brand-renderer.js
+          grep -q "llBrandLogo" lifelingo-brand-renderer.js
+          grep -q "drawLogo" lifelingo-brand-renderer.js
+          grep -q "1080" lifelingo-brand-renderer.js
+          grep -q "1920" lifelingo-brand-renderer.js
+          grep -q "QRCode" lifelingo-brand-renderer.js
+          grep -q "cfgUrl" lifelingo-brand-renderer.js
+          grep -q "object-fit:contain" lifelingo-brand-renderer.css
+          grep -q "overflow:visible" lifelingo-brand-renderer.css
+          grep -q "window.addEventListener('click'" lifelingo-brand-renderer.js
       - name: Validate Avatar Surprise assets and configuration
         run: |
           test "$(grep -o "gender:'girls'" v69-avatar-system.js | wc -l)" -eq 5
