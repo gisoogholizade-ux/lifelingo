@@ -1,0 +1,10 @@
+(()=>{
+'use strict';
+let pending=false;const $=s=>document.querySelector(s);
+function msg(t){const el=$('#authMsg');if(el)el.textContent=t||''}
+function uiLoggedOut(){const app=$('#app'),box=$('#authBox');app?.classList.add('hidden');box?.classList.remove('hidden');if($('#who'))$('#who').textContent='';['users','requests'].forEach(id=>{const el=document.getElementById(id);if(el)el.replaceChildren()});['mTotal','mFree','mPro','mPending','mRecent'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='0'})}
+async function client(){if(window.llSupabase)return window.llSupabase;return await new Promise((resolve,reject)=>{const t=setTimeout(()=>reject(new Error('Auth client unavailable')),10000);window.addEventListener('lifelingo:supabase-ready',()=>{clearTimeout(t);resolve(window.llSupabase)},{once:true});window.addEventListener('lifelingo:supabase-error',()=>{clearTimeout(t);reject(new Error('Auth client unavailable'))},{once:true})})}
+async function logout(btn){if(pending)return;pending=true;const old=btn?.textContent;if(btn){btn.disabled=true;btn.textContent='Logging out…'}try{const sb=await client();try{await sb.removeAllChannels?.()}catch{}const {error}=await sb.auth.signOut({scope:'global'});if(error){const current=(await sb.auth.getSession()).data?.session;if(current)throw error}uiLoggedOut();history.replaceState(null,'',location.pathname+location.search);location.replace(location.pathname+location.search)}catch(e){console.error('[LifeLingo Admin logout]',e);msg('Could not complete logout. Please try again.');if(btn){btn.disabled=false;btn.textContent=old||'Log out'}pending=false}}
+function verify(){client().then(sb=>sb.auth.getSession()).then(({data})=>{if(!data?.session)uiLoggedOut()}).catch(()=>{})}
+document.addEventListener('click',e=>{const b=e.target.closest?.('#logout,[data-logout],[data-signout]');if(!b)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();logout(b)},true);window.addEventListener('pageshow',verify);window.addEventListener('popstate',verify);window.addEventListener('hashchange',verify);
+})();
