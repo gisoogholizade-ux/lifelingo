@@ -1,0 +1,25 @@
+(()=>{
+'use strict';
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const SCENES={
+ passport:{label:'AIRPORT · PASSPORT CONTROL',prop:'passport',accent:'airport'},
+ sim:{label:'MOBILE STORE',prop:'phone',accent:'store'},taxi:{label:'CITY TRANSPORT',prop:'map',accent:'street'},
+ supermarket:{label:'SUPERMARKET',prop:'bag',accent:'market'},bank:{label:'BANK',prop:'card',accent:'bank'},doctor:{label:'CLINIC',prop:'medicine',accent:'clinic'},
+ career:{label:'WORKPLACE',prop:'laptop',accent:'office'},hotel:{label:'HOTEL RECEPTION',prop:'key',accent:'hotel'},restaurant:{label:'RESTAURANT',prop:'menu',accent:'restaurant'},
+ directions:{label:'CITY STREET',prop:'map',accent:'street'},home:{label:'APARTMENT VIEWING',prop:'key',accent:'home'}
+};
+let stage=null, mission=null, state='IDLE', enterTimer=0, reactTimer=0, observer=null;
+const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+function detectType(cin){for(const c of cin.classList){if(c.startsWith('scene-'))return c.slice(6)}return'career'}
+function setState(next){if(!stage||state===next)return;state=next;stage.dataset.state=next;const badge=$('[data-ll-speak-state]',stage);if(badge)badge.textContent=next.replaceAll('_',' ')}
+function counter(){const raw=$('#speakCounter')?.textContent||'1/1',m=raw.match(/(\d+)\s*\/\s*(\d+)/);return m?{n:+m[1],total:+m[2]}:{n:1,total:1}}
+function updateProgress(){if(!stage)return;const {n,total}=counter(),dots=$$('.llMissionDot',stage);dots.forEach((d,i)=>d.classList.toggle('done',i<n-1)||d.classList.toggle('active',i===n-1));const txt=$('.llMissionStep',stage);if(txt)txt.textContent=`Turn ${n} of ${total}`;if(n>1&&state==='IDLE'){setState('MOVING');clearTimeout(reactTimer);reactTimer=setTimeout(()=>setState('IDLE'),reduced()?0:650)}}
+function environment(type){const cfg=SCENES[type]||SCENES.career;return `<div class="llSceneBg ll-${cfg.accent}"></div><div class="llSceneDepth back"></div><div class="llSceneDepth mid"></div><div class="llSceneLight"></div><div class="llPremiumActor" aria-hidden="true"><div class="llActorShadow"></div><div class="llActorBody"><div class="llActorHead"><i class="llEye left"></i><i class="llEye right"></i><i class="llMouth"></i></div><div class="llActorTorso"></div><div class="llArm left"></div><div class="llArm right"></div></div><img class="llActorFallback" src="./v14-officer.svg?v=a707360d" alt=""></div><div class="llSceneProp ${cfg.prop}"></div><div class="llSceneForeground"></div><div class="llSceneAtmosphere"></div><div class="llSceneHud"><span class="llSceneLabel">${cfg.label}</span><span class="llSpeakState" data-ll-speak-state>ENTERING</span></div>`}
+function build(){mission=$('#speakMission');const cin=$('#speakCinema');if(!mission||!cin)return cleanup();if(cin.dataset.premium==='1'){stage=$('.llPremiumStage',cin);return sync()}
+ cin.dataset.premium='1';const type=detectType(cin),{total}=counter();stage=document.createElement('div');stage.className='llPremiumStage';stage.dataset.scene=type;stage.dataset.state='ENTERING';stage.innerHTML=environment(type)+`<div class="llMissionMini"><div><b>Your Mission</b><span class="llMissionStep">Turn 1 of ${total}</span></div><div class="llMissionDots">${Array.from({length:total},(_,i)=>`<i class="llMissionDot ${i===0?'active':''}"></i>`).join('')}</div></div>`;cin.prepend(stage);cin.classList.add('llPremiumCinema');setState('ENTERING');clearTimeout(enterTimer);enterTimer=setTimeout(()=>setState('IDLE'),reduced()?0:1100);sync()}
+function feedbackState(){const f=$('#speakFeedback'),txt=(f?.textContent||'').toLowerCase();if(!stage)return;if($('#speakMic')?.classList.contains('listening'))return setState('LISTENING');if($('#speakNpcBody')?.classList.contains('talk'))return setState('SPEAKING');if(/checking|processing|thinking|wait/.test(txt))return setState('THINKING');if(/correct|great|nice|good|captured|✓/.test(txt)){setState('REACTING_POSITIVE');clearTimeout(reactTimer);reactTimer=setTimeout(()=>setState('IDLE'),reduced()?0:900);return}if(/not quite|try again|couldn|error|denied|no speech/.test(txt)){setState('REACTING_CONFUSED');clearTimeout(reactTimer);reactTimer=setTimeout(()=>setState('IDLE'),reduced()?0:900);return}if(state!=='ENTERING'&&state!=='MOVING')setState('IDLE')}
+function sync(){if(!stage)return;updateProgress();feedbackState()}
+function cleanup(){clearTimeout(enterTimer);clearTimeout(reactTimer);stage=null;mission=null;state='IDLE'}
+function watch(){observer?.disconnect();observer=new MutationObserver(()=>{if($('#speakMission')){build();sync()}else cleanup()});observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','style']});document.addEventListener('visibilitychange',()=>document.documentElement.classList.toggle('llPageHidden',document.hidden));}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{watch();build()},{once:true});else{watch();build()}
+})();
