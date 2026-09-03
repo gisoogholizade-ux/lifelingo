@@ -27,6 +27,8 @@ jobs:
           grep -q 'lifelingo-unified.css' v66.html
           grep -q 'v67-polish.css' v66.html
           grep -q 'v68-avatar.css' v66.html
+          grep -q 'lifelingo-color-system.css' v66.html
+          grep -q 'lifelingo-color-system.css' admin-v2.html
           grep -q 'v69-avatar-system.js' v66.html
           grep -q 'avatar-legacy-recovery.js' v66.html
           grep -q 'lifelingo-config.js' v66.html
@@ -57,6 +59,16 @@ jobs:
           grep -q "failedImages" v69-avatar-system.js
           grep -q "auth.getSession" avatar-legacy-recovery.js
           ! grep -q "localhost" lifelingo-config.js
+      - name: Validate centralized color identity
+        run: |
+          grep -q -- '--color-brand-primary: #6c5ce7' lifelingo-color-system.css
+          grep -q -- '--color-accent-speaking: #38bdf8' lifelingo-color-system.css
+          grep -q -- '--color-accent-streak: #f59e0b' lifelingo-color-system.css
+          grep -q -- '--color-success:' lifelingo-color-system.css
+          grep -q -- '--color-warning:' lifelingo-color-system.css
+          grep -q -- '--color-error:' lifelingo-color-system.css
+          grep -q -- '--gradient-brand:' lifelingo-color-system.css
+          grep -q 'html\[data-theme="light"\]' lifelingo-color-system.css
       - name: Guard against plaintext password storage
         run: |
           ! grep -RniE 'localStorage.*password|password.*localStorage' v66*.js v67*.js v69*.js avatar-legacy-recovery.js v66.html
