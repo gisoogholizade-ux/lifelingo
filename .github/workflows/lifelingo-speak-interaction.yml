@@ -29,6 +29,7 @@ jobs:
           grep -q "removeAttribute('inert')" lifelingo-speak-interaction-guard.js
           grep -q "style.pointerEvents=''" lifelingo-speak-interaction-guard.js
           grep -q "lifelingo-speak-interaction-guard.js?v=1" lifelingo-auth-session-guard.js
+          grep -Eq "lifelingo-speak-interaction-guard.js\?v=[0-9]+" v66.html
       - name: Confirm original blocker and canonical Speak route are still auditable
         run: |
           grep -q ".speakMission{position:fixed;inset:0;z-index:200" v67-polish.css
