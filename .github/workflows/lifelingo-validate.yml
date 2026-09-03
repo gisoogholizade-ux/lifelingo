@@ -3,11 +3,32 @@ on:
   push:
     branches: [main]
   pull_request:
+permissions:
+  contents: write
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Repair known unified-app brace regression
+        if: github.event_name == 'push'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('v66-app.js')
+          s=p.read_text()
+          old="catch(e){toast(e.message||'Could not upload photo.')}\nfunction renderPartnerPrefs"
+          new="catch(e){toast(e.message||'Could not upload photo.')}}\nfunction renderPartnerPrefs"
+          if old in s:
+              p.write_text(s.replace(old,new,1))
+          PY
+          if ! git diff --quiet -- v66-app.js; then
+            git config user.name "LifeLingo CI"
+            git config user.email "actions@users.noreply.github.com"
+            git add v66-app.js
+            git commit -m "Fix unified app syntax"
+            git push
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
