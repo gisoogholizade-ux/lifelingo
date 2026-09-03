@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-const $=s=>document.querySelector(s);
-let profileCache=null,pending=null;
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+let profileCache=null,pending=null,saving=false;
 const isFa=()=>document.documentElement.lang==='fa'||document.documentElement.dataset.language==='fa';
 async function getProfile(){
   if(profileCache)return profileCache;
@@ -37,8 +37,38 @@ async function inject(){
   const goal=$('#ppGoal')?.closest('.field');
   if(goal)goal.after(field);else root.querySelector('#savePartnerPrefs')?.before(field);
 }
+function message(text,bad=false){const el=$('#ppMsg');if(!el)return;el.textContent=text;el.className='feedback '+(bad?'bad':'good')}
+async function save(){
+  if(saving)return;
+  const sb=window.llSupabase,btn=$('#savePartnerPrefs');
+  if(!sb){message(isFa()?'اتصال آماده نیست. دوباره تلاش کنید.':'Connection is not ready. Please try again.',true);return}
+  saving=true;if(btn){btn.disabled=true;btn.dataset.old=btn.textContent;btn.textContent=isFa()?'در حال ذخیره…':'Saving…'}
+  try{
+    const p=await getProfile();
+    if(!p?.age_group)throw new Error(isFa()?'ابتدا بازه سنی را در پروفایل تعیین کنید.':'Set your age range in Profile first.');
+    const payload={
+      target_language:$('#ppLang')?.value||'en',preferred_level:$('#ppLevel')?.value||'',conversation_goal:$('#ppGoal')?.value||'general',
+      preferred_age_group:p.age_group,text_enabled:!!$('#ppText')?.checked,voice_enabled:!!$('#ppVoice')?.checked,matching_enabled:!!$('#ppMatching')?.checked,
+      topics:($('#ppTopics')?.value||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,12),
+      interests:($('#ppInterests')?.value||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,12),
+      availability:$$('#ppAvailability .tagChoice.on').map(x=>x.dataset.tag)
+    };
+    const {error}=await sb.rpc('update_partner_preferences_v2',{p_payload:payload});
+    if(error)throw error;
+    message(isFa()?'ذخیره شد ✓':'Saved ✓');
+    setTimeout(()=>{document.querySelector('#partnerPrefsModal')?.classList.remove('show');document.querySelector('[data-nav="partners"]')?.click()},350);
+  }catch(e){
+    console.error('[LifeLingo Partner] save failed',e);
+    const raw=String(e?.message||'');
+    const network=/Load failed|Failed to fetch|NetworkError/i.test(raw);
+    message(network?(isFa()?'ارتباط با سرور قطع شد. اینترنت را بررسی کن و دوباره ذخیره کن.':'Could not reach the server. Check your connection and try again.'):(raw|| (isFa()?'ذخیره تنظیمات انجام نشد.':'Could not save matching preferences.')),true);
+  }finally{saving=false;if(btn){btn.disabled=false;btn.textContent=btn.dataset.old|| (isFa()?'ذخیره تنظیمات':'Save matching preferences')}}
+}
 function reset(){profileCache=null;document.querySelector('[data-ll-partner-age-v2]')?.remove();setTimeout(inject,0)}
-document.addEventListener('click',e=>{if(e.target.closest('[data-partner-prefs],#editPartnerPrefs'))setTimeout(inject,0)},true);
+document.addEventListener('click',e=>{
+  if(e.target.closest('#savePartnerPrefs')){e.preventDefault();e.stopImmediatePropagation();save();return}
+  if(e.target.closest('[data-partner-prefs],#editPartnerPrefs'))setTimeout(inject,0);
+},true);
 document.addEventListener('lifelingo:language-change',reset);
 window.addEventListener('lifelingo:profile-updated',reset);
 const obs=new MutationObserver(()=>inject());
