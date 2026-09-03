@@ -23,7 +23,6 @@ async function login(){
     const {data,error}=await client.auth.signInWithPassword({email,password});
     if(error)throw error;
     if(!data?.session)throw new Error('Login succeeded but no session was returned. Please try again.');
-    await client.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
     location.reload();
   }catch(e){
     console.error('[LifeLingo auth] login failed',e);
