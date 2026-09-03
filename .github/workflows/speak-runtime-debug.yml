@@ -1,5 +1,6 @@
 name: Speak Runtime Debug
 
+# diagnostic revision 2
 on:
   push:
     paths:
@@ -110,6 +111,7 @@ jobs:
             } catch(e) { console.log('POST_SPEAK_CLICK_FAIL',sel,e.message); }
           }
 
+          console.log('BROWSER_LOGS',JSON.stringify(logs));
           await browser.close();
           EOF
           node /tmp/speak-debug.mjs
