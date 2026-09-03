@@ -26,7 +26,7 @@ jobs:
       - name: Validate Free Speak access path
         run: |
           node --check v67-speak-fix.js
-          grep -q "ensureData(!s.free)" v67-speak-fix.js
+          grep -Fq "ensureData(!s.free,runId)" v67-speak-fix.js
           grep -q "rpc('my_membership')" v67-speak-fix.js
           grep -q "function waitForSession" v67-speak-fix.js
           grep -q "function cleanupMission" v67-speak-fix.js
