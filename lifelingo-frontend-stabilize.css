@@ -1,0 +1,8 @@
+/* LifeLingo frontend stabilization safeguards */
+.llRecover{padding:18px;border:1px solid var(--line,#30344f);border-radius:16px}.llRecover p{margin:8px 0 14px}.llCourseFallback .chapter{margin-top:14px}.llCourseFallback .chapterHead{gap:12px}.llCourseFallback .path{margin-top:14px}.llCourseFallback .node[aria-disabled="true"]{opacity:.68}.llCourseFallback .softCard{margin-top:14px}.llCourseFallback .progressbar{max-width:380px;margin-top:10px}
+[data-ll-matching-extras="1"] .row{align-items:flex-start}#ppAge:disabled{opacity:.85;cursor:not-allowed}
+.speakScenarioCard[data-canonical-scenario="apartment"]{display:none!important}
+html[dir="rtl"] [data-ll-matching-extras="1"],html[dir="rtl"] .llCourseFallback{direction:rtl;text-align:start}html[dir="rtl"] .llCourseFallback .progressbar i{transform-origin:right center}html[dir="rtl"] [data-ll-matching-extras="1"] input:not([type="email"]):not([type="tel"]):not([type="password"]),html[dir="rtl"] [data-ll-matching-extras="1"] select{text-align:start}
+#speakQuestion,.speakQuestion,#speakAnswer,.dailyPhrase,[data-learning-target="true"]{unicode-bidi:isolate}
+@media(max-width:640px){[data-ll-matching-extras="1"] .row{display:grid!important;grid-template-columns:1fr!important}.llCourseFallback .chapterHead{align-items:flex-start}.llCourseFallback .node{min-height:72px}.llRecover .actions{display:grid;grid-template-columns:1fr}.llRecover .actions>*{width:100%}}
+@media(max-width:430px){.llCourseFallback{padding-bottom:84px}.llCourseFallback .node{width:100%}}

@@ -19,16 +19,11 @@ async function login(){
   setBusy(btn,true,'Logging in…');setMessage('');
   try{
     const client=await waitForClient();
-    await new Promise(r=>setTimeout(r,0));
     const {data,error}=await client.auth.signInWithPassword({email,password});
     if(error)throw error;
     if(!data?.session)throw new Error('Login succeeded but no session was returned. Please try again.');
     location.reload();
-  }catch(e){
-    console.error('[LifeLingo auth] login failed',e);
-    setMessage(e?.message||'Could not log in. Please try again.');
-    setBusy(btn,false);
-  }
+  }catch(e){console.error('[LifeLingo auth] login failed',e);setMessage(e?.message||'Could not log in. Please try again.');setBusy(btn,false)}
 }
 async function register(){
   const btn=$('#registerBtn'),name=$('#regName')?.value.trim()||'',email=$('#regEmail')?.value.trim().toLowerCase()||'',phone=$('#regPhone')?.value.trim()||'',password=$('#regPassword')?.value||'';
@@ -36,35 +31,8 @@ async function register(){
   if(!/^\+?[0-9]{8,15}$/.test(phone))return setMessage('Enter a valid mobile number including country code.');
   if(password.length<8)return setMessage('Use at least 8 characters for your password.');
   setBusy(btn,true,'Creating account…');setMessage('');
-  try{
-    const client=await waitForClient();
-    const {data,error}=await client.auth.signUp({email,password,options:{data:{display_name:name,phone,contact_consent:!!$('#regConsent')?.checked}}});
-    if(error)throw error;
-    if(data?.session){location.reload();return}
-    setMessage('Account created. Check your email if confirmation is required, then log in.');
-  }catch(e){
-    console.error('[LifeLingo auth] registration failed',e);
-    setMessage(e?.message||'Could not create account. Please try again.');
-  }finally{setBusy(btn,false)}
+  try{const client=await waitForClient();const {data,error}=await client.auth.signUp({email,password,options:{data:{display_name:name,phone,contact_consent:!!$('#regConsent')?.checked}}});if(error)throw error;if(data?.session){location.reload();return}setMessage('Account created. Check your email if confirmation is required, then log in.')}catch(e){console.error('[LifeLingo auth] registration failed',e);setMessage(e?.message||'Could not create account. Please try again.')}finally{setBusy(btn,false)}
 }
-function loadPartnerPatch(){
-  if(document.querySelector('script[data-lifelingo-partner-ui-v2]'))return;
-  const s=document.createElement('script');
-  s.src='./lifelingo-partner-ui-v2.js?v=2';
-  s.dataset.lifelingoPartnerUiV2='true';
-  s.async=false;
-  s.onerror=()=>console.warn('[LifeLingo Partner UI] patch script failed to load');
-  document.body.appendChild(s);
-}
-function install(){
-  const loginBtn=$('#loginBtn'),registerBtn=$('#registerBtn');
-  if(loginBtn)loginBtn.onclick=login;
-  if(registerBtn)registerBtn.onclick=register;
-  if(!window.llSupabase){
-    [loginBtn,registerBtn].forEach(b=>{if(b)b.dataset.authWaiting='true'});
-    window.addEventListener('lifelingo:supabase-ready',()=>[loginBtn,registerBtn].forEach(b=>{if(b)delete b.dataset.authWaiting}),{once:true});
-  }
-  loadPartnerPatch();
-}
+function install(){const loginBtn=$('#loginBtn'),registerBtn=$('#registerBtn');if(loginBtn)loginBtn.onclick=login;if(registerBtn)registerBtn.onclick=register;if(!window.llSupabase){[loginBtn,registerBtn].forEach(b=>{if(b)b.dataset.authWaiting='true'});window.addEventListener('lifelingo:supabase-ready',()=>[loginBtn,registerBtn].forEach(b=>{if(b)delete b.dataset.authWaiting}),{once:true})}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
