@@ -12,7 +12,7 @@ const STATE_LABELS={
  ENTERING:['ENTERING','در حال ورود'],IDLE:['READY','آماده'],LISTENING:['LISTENING','در حال گوش دادن'],THINKING:['PROCESSING','در حال بررسی'],SPEAKING:['SPEAKING','در حال صحبت'],
  REACTING_POSITIVE:['NICE','عالی'],REACTING_NEUTRAL:['FEEDBACK','بازخورد'],REACTING_CONFUSED:['TRY AGAIN','دوباره امتحان کن'],GESTURING:['GESTURING','در حال اشاره'],MOVING:['MOVING','در حال حرکت'],MISSION_SUCCESS:['MISSION COMPLETE','ماموریت کامل شد'],EXITING:['EXITING','در حال خروج'],ERROR_FALLBACK:['READY','آماده']
 };
-let stage=null,mission=null,state='IDLE',enterTimer=0,reactTimer=0,observer=null,lastTurn=1;
+let stage=null,mission=null,state='IDLE',enterTimer=0,reactTimer=0,observer=null,lastTurn=1,syncQueued=false;
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 const isFa=()=>document.documentElement.lang==='fa'||document.documentElement.dataset.language==='fa';
 function detectType(cin){for(const c of cin.classList){if(c.startsWith('scene-'))return c.slice(6)}return'career'}
@@ -29,6 +29,7 @@ function feedbackState(){const f=$('#speakFeedback'),txt=(f?.textContent||'').to
 function sync(){if(!stage)return;updateProgress();feedbackState()}
 function cleanup(){clearTimeout(enterTimer);clearTimeout(reactTimer);stage=null;mission=null;state='IDLE';lastTurn=1}
 function isOwnStageMutation(record){const target=record.target?.nodeType===1?record.target:record.target?.parentElement;return !!target?.closest?.('.llPremiumStage')}
-function watch(){observer?.disconnect();observer=new MutationObserver(records=>{if(records.length&&records.every(isOwnStageMutation))return;if($('#speakMission'))build();else cleanup()});observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','style']});document.addEventListener('visibilitychange',()=>document.documentElement.classList.toggle('llPageHidden',document.hidden));document.addEventListener('lifelingo:language-change',localizeHud)}
+function scheduleSync(){if(syncQueued)return;syncQueued=true;setTimeout(()=>{syncQueued=false;if($('#speakMission'))build();else cleanup()},0)}
+function watch(){observer?.disconnect();observer=new MutationObserver(records=>{if(!records.length||records.every(isOwnStageMutation))return;scheduleSync()});observer.observe(document.body,{subtree:true,childList:true,characterData:true});document.addEventListener('visibilitychange',()=>document.documentElement.classList.toggle('llPageHidden',document.hidden));document.addEventListener('lifelingo:language-change',localizeHud)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{watch();build()},{once:true});else{watch();build()}
 })();
