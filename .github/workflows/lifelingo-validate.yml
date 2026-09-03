@@ -1,0 +1,31 @@
+name: LifeLingo Validate
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check v66-app.js
+          node --check v66-conversation-bridge.js
+          node --check supabase-client.js
+      - name: Check unified shell references
+        run: |
+          grep -q 'lifelingo-unified.css' v66.html
+          grep -q 'v66-app.js' v66.html
+          grep -q 'v66-conversation-bridge.js' v59.html
+          grep -q 'v66-legacy.css' v59.html
+      - name: Guard against plaintext password storage
+        run: |
+          ! grep -RniE 'localStorage.*password|password.*localStorage' v66*.js v66.html
+      - name: Verify migration files exist
+        run: |
+          test -f supabase/migrations/202609030003_unified_product_preferences_and_partner_hub.sql
+          test -f supabase/migrations/202609030004_protect_premium_legacy_missions.sql
