@@ -116,3 +116,41 @@ test('signup exposes invalid-email and rate-limit failures instead of a generic 
     }finally{app.close()}
   }
 });
+
+test('onboarding goal selection advances reliably on a direct mobile tap',async()=>{
+  const html=await readFile(new URL('../v66.html',import.meta.url),'utf8');
+  const dom=new JSDOM(html,{url:'https://gisoogholizade-ux.github.io/lifelingo/v66.html',runScripts:'outside-only',pretendToBeVisual:true});
+  const {window}=dom;
+  try{
+    Object.defineProperty(window,'innerWidth',{value:390,configurable:true});
+    window.scrollTo=()=>{};
+    window.HTMLElement.prototype.scrollIntoView=()=>{};
+    window.HTMLElement.prototype.scrollTo=()=>{};
+    window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
+    const session={user:{id:'onboarding-user'}};
+    const rpc=async name=>{
+      if(name==='get_learning_home')return{data:{courses:[],membership:{is_pro:false}},error:null};
+      if(name==='get_unified_profile')return{data:{profile:{display_name:'Tester',learning_goals:[],scenario_preferences:[],onboarding_completed:false,theme_preference:'dark'},partner:{},daily:{study:{dates:[],dailyDone:{}},retention:{}}},error:null};
+      if(name==='list_avatar_choices')return{data:[],error:null};
+      return{data:null,error:null};
+    };
+    const upgradeQuery={select(){return this},in(){return this},order(){return this},async limit(){return{data:[],error:null}}};
+    window.llSupabase={
+      rpc,
+      from:()=>upgradeQuery,
+      auth:{
+        async getSession(){return{data:{session},error:null}},
+        onAuthStateChange(){return{data:{subscription:{unsubscribe(){}}}}}
+      }
+    };
+    const source=await readFile(new URL('../v66-app.js',import.meta.url),'utf8');
+    window.eval(source);
+    await delay(40);
+    assert.equal(window.document.querySelector('#onboarding').classList.contains('hidden'),false);
+    const everyday=window.document.querySelector('[data-on-goal="everyday"]');
+    everyday.click();
+    assert.equal(window.document.querySelector('[data-on-goal="everyday"]').classList.contains('on'),true);
+    window.document.querySelector('[data-on-next]').click();
+    assert.match(window.document.querySelector('#onboardRoot h1').textContent,/Where are you starting/);
+  }finally{dom.window.close()}
+});

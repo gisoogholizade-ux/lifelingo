@@ -53,7 +53,8 @@ jobs:
           grep -q "CREATE_ACCOUNT_CLICK" v66-app.js
           grep -q "t.closest('\[data-authmode\]')" v66-app.js
           test "$(grep -c "#registerBtn').onclick" v66-app.js)" -eq 0
-          grep -q "v66-app.js?v=auth-ui-2" v66.html
+          grep -q "v66-app.js?v=onboarding-touch-1" v66.html
+          grep -q "handleOnboardingClick" v66-app.js
       - name: Run deterministic Speak regression
         run: |
           npm install --no-save jsdom@26.1.0
