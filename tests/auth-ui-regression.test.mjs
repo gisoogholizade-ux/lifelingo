@@ -62,6 +62,32 @@ test('Create account opens the complete registration view at supported widths',a
   }
 });
 
+test('canonical login reports auth failures and delegated logout remains connected',async()=>{
+  const app=await createAuthView(390);
+  try{
+    const {window}=app;
+    let loginPayload=null,logouts=0;
+    window.llSupabase.auth.signInWithPassword=async payload=>{
+      loginPayload=payload;
+      return{data:{session:null},error:new Error('Invalid login')};
+    };
+    window.llSupabase.auth.signOut=async()=>{logouts++;return{error:null}};
+    window.document.querySelector('#loginEmail').value=' Learner@Example.Test ';
+    window.document.querySelector('#loginPassword').value='safe-password';
+    window.document.querySelector('#loginBtn').click();
+    await delay(20);
+    assert.equal(loginPayload.email,'learner@example.test');
+    assert.equal(loginPayload.password,'safe-password');
+    assert.equal(window.document.querySelector('#authMsg').textContent,'Invalid login');
+    const logout=window.document.createElement('button');
+    logout.id='logoutBtn';
+    window.document.body.append(logout);
+    logout.click();
+    await delay(10);
+    assert.equal(logouts,1);
+  }finally{app.close()}
+});
+
 test('canonical signup sends once and does not call a profile RPC without a session',async()=>{
   const app=await createAuthView(390);
   try{

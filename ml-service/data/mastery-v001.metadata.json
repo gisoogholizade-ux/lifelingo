@@ -1,0 +1,16 @@
+{
+  "version": "mastery-v001",
+  "schemaVersion": 1,
+  "sampleCount": 8689,
+  "learnerCount": 600,
+  "sources": [
+    "SYNTHETIC_DEVELOPMENT_V1"
+  ],
+  "qualityDistribution": {
+    "SYNTHETIC": 8689
+  },
+  "consentVersion": "synthetic-not-applicable",
+  "sanitizerVersion": "pii-v1",
+  "splitMethod": "grouped-by-learner",
+  "synthetic": true
+}

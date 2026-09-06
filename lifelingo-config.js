@@ -1,1 +1,1 @@
-window.LIFELINGO_CONFIG=Object.freeze({publicUrl:'https://gisoogholizade-ux.github.io/lifelingo/'});
+window.LIFELINGO_CONFIG=Object.freeze({publicUrl:'https://gisoogholizade-ux.github.io/lifelingo/',supabaseUrl:'https://wmbjkddcrqnkqputpwcs.supabase.co',supabasePublishableKey:'sb_publishable_pOdxaSMuxEugo1g-umbi5w_t1cGox7x',aiFunction:'lifelingo-ai'});

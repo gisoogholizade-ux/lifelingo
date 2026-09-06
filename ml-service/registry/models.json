@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "models": [
+    {
+      "modelId": "mastery-logistic-regression-v001",
+      "modelType": "NEXT_ANSWER_MASTERY",
+      "version": "v001",
+      "datasetVersion": "mastery-v001",
+      "createdAt": "2026-09-06T00:44:10.986923+00:00",
+      "metrics": {
+        "accuracy": 0.7750193948797518,
+        "precision": 0.7818181818181819,
+        "recall": 0.7794561933534743,
+        "f1": 0.7806354009077155,
+        "rocAuc": 0.8561967263668647,
+        "brier": 0.15459890417910327
+      },
+      "parameters": {
+        "algorithm": "logistic-regression"
+      },
+      "artifact": "artifacts/mastery-model.joblib",
+      "status": "EXPERIMENTAL"
+    }
+  ]
+}

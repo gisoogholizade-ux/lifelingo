@@ -1,0 +1,1 @@
+"""LifeLingo mastery prediction service."""

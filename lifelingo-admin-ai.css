@@ -1,0 +1,3 @@
+.llAdminAiGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}.llAdminAiGrid .stat b{font-size:24px}.llAdminPanel{margin-top:12px}.llAdminPanel table{width:100%;border-collapse:collapse}.llAdminPanel th,.llAdminPanel td{text-align:left;padding:10px 8px;border-top:1px solid var(--line);font-size:12px}.llAdminStatus{min-height:20px;color:var(--muted);font-size:12px}.llAdminEmpty{padding:20px;text-align:center;color:var(--muted)}
+@media(max-width:760px){.llAdminAiGrid{grid-template-columns:repeat(2,1fr)}.llAdminPanel{overflow:auto}}
+@media(max-width:430px){.llAdminAiGrid{grid-template-columns:1fr}}

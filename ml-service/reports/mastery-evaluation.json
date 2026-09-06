@@ -1,0 +1,48 @@
+{
+  "selectedModelId": "mastery-logistic-regression-v001",
+  "selectedAlgorithm": "logistic-regression",
+  "datasetVersion": "mastery-v001",
+  "datasetIsSynthetic": true,
+  "sampleCount": 8689,
+  "learnerCount": 600,
+  "splitCounts": {
+    "train": 6068,
+    "validation": 1332,
+    "test": 1289
+  },
+  "validation": {
+    "logistic-regression": {
+      "accuracy": 0.7897897897897898,
+      "precision": 0.7865671641791044,
+      "recall": 0.7936746987951807,
+      "f1": 0.7901049475262368,
+      "rocAuc": 0.8660427638698507,
+      "brier": 0.14848878948646207
+    },
+    "random-forest": {
+      "accuracy": 0.777027027027027,
+      "precision": 0.7663280116110305,
+      "recall": 0.7951807228915663,
+      "f1": 0.7804878048780488,
+      "rocAuc": 0.8589342399538272,
+      "brier": 0.1523574108139022
+    },
+    "gradient-boosting": {
+      "accuracy": 0.7807807807807807,
+      "precision": 0.7687861271676301,
+      "recall": 0.8012048192771084,
+      "f1": 0.7846607669616519,
+      "rocAuc": 0.8608246609191256,
+      "brier": 0.15133589808065523
+    }
+  },
+  "test": {
+    "accuracy": 0.7750193948797518,
+    "precision": 0.7818181818181819,
+    "recall": 0.7794561933534743,
+    "f1": 0.7806354009077155,
+    "rocAuc": 0.8561967263668647,
+    "brier": 0.15459890417910327
+  },
+  "selectionRule": "highest validation ROC-AUC minus 0.35 times Brier score; complexity is not preferred"
+}

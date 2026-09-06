@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0.0",
+  "knowledgeVersion": "lifelingo-kb-v001",
+  "targetLanguage": "en",
+  "supportLanguages": ["fa"],
+  "quality": "LIFELINGO_VERIFIED",
+  "files": [
+    {"path":"grammar/a1.json","level":"A1","domain":"grammar"},
+    {"path":"grammar/a2.json","level":"A2","domain":"grammar"},
+    {"path":"grammar/b1.json","level":"B1","domain":"grammar"},
+    {"path":"grammar/b2.json","level":"B2","domain":"grammar"},
+    {"path":"vocabulary/a1.json","level":"A1","domain":"vocabulary"},
+    {"path":"vocabulary/a2.json","level":"A2","domain":"vocabulary"},
+    {"path":"vocabulary/b1.json","level":"B1","domain":"vocabulary"},
+    {"path":"vocabulary/b2.json","level":"B2","domain":"vocabulary"},
+    {"path":"scenarios/a1.json","level":"A1","domain":"scenario"},
+    {"path":"scenarios/a2.json","level":"A2","domain":"scenario"},
+    {"path":"scenarios/b1.json","level":"B1","domain":"scenario"},
+    {"path":"scenarios/b2.json","level":"B2","domain":"scenario"}
+  ]
+}

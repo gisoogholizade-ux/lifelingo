@@ -1,0 +1,9 @@
+.llIntelligenceCard{grid-column:span 12;background:linear-gradient(135deg,color-mix(in srgb,var(--color-brand-primary) 13%,var(--color-surface)),var(--color-surface))!important}
+.llIntelligenceRow,.llEnglishHead{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.llIntelligenceRow h2,.llEnglishHead h2{margin:6px 0}
+.llSkillColumns{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+.llSkillColumns>div{padding:14px;border-radius:var(--radius-md,16px);background:color-mix(in srgb,var(--color-brand-primary) 7%,transparent);border:1px solid var(--color-border)}
+.llSkillColumns .tagGroup{margin-top:10px}.llTrend{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--gradient-brand);color:white;font-size:24px;font-weight:900}
+.llPrivacyNote{font-size:12px}.llReviewReason{margin:0 0 14px}
+.llDailyIntelligence{margin:12px 0}.llDailyIntelligence p{margin:6px 0 10px}
+@media(max-width:640px){.llIntelligenceRow,.llEnglishHead{align-items:flex-start;flex-direction:column}.llIntelligenceRow .primary{width:100%}.llSkillColumns{grid-template-columns:1fr}}
