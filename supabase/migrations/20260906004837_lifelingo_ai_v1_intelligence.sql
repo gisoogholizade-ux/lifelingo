@@ -287,4 +287,302 @@ begin
   if et not in ('LESSON_STARTED','LESSON_COMPLETED','VOCABULARY_VIEWED','VOCABULARY_ANSWERED','VOCABULARY_RECALL','VOCABULARY_FORGOTTEN','GRAMMAR_ANSWERED','LISTENING_ANSWERED','PRONUNCIATION_ATTEMPT','READING_ANSWERED','WRITING_SUBMISSION','REVIEW_RESULT','SPEAK_STARTED','SPEAK_ATTEMPT','SPEAK_FEEDBACK','CONVERSATION_STARTED','CONVERSATION_TURN','CONVERSATION_CORRECTION','CONVERSATION_COMPLETED','MISSION_STARTED','MISSION_OBJECTIVE_COMPLETED','MISSION_COMPLETED','AI_HINT_USED','AI_PARTNER_STARTED','AI_PARTNER_COMPLETED') then raise exception 'invalid event type'; end if;
   if sid is not null and sid !~ '^[a-z0-9][a-z0-9_.-]{1,95}$' then raise exception 'invalid skill id'; end if;
   if jsonb_typeof(clean_meta)<>'object' or octet_length(clean_meta::text)>8192 then raise exception 'invalid metadata'; end if;
-  select * into lm from publi
+  select * into lm from public.ensure_learner_model_v1();
+  insert into public.learning_events(user_id,anonymous_learner_id,event_type,occurred_at,course_id,chapter_id,lesson_id,activity_id,scenario_id,skill_id,attempt_number,difficulty,correct,score,response_time_ms,hint_used,translation_used,quality_label,source,metadata)
+  values(uid,lm.anonymous_learner_id,et,coalesce((p_event->>'timestamp')::timestamptz,now()),nullif(p_event->>'courseId',''),nullif(p_event->>'chapterId',''),nullif(p_event->>'lessonId',''),nullif(p_event->>'activityId',''),nullif(p_event->>'scenarioId',''),sid,nullif(p_event->>'attemptNumber','')::int,diff,is_correct,raw_score,nullif(p_event->>'responseTimeMs','')::int,used_hint,used_translation,case when et='LESSON_COMPLETED' and exists(select 1 from public.user_learning_progress lp where lp.user_id=uid and lp.unit_id=p_event->>'lessonId' and lp.status='completed') then 'SYSTEM_GROUND_TRUTH' else 'UNVERIFIED_USER_CONTENT' end,'client',clean_meta)
+  returning id into eid;
+
+  if sid is not null and raw_score is not null and et in ('VOCABULARY_ANSWERED','VOCABULARY_RECALL','VOCABULARY_FORGOTTEN','GRAMMAR_ANSWERED','LISTENING_ANSWERED','PRONUNCIATION_ATTEMPT','READING_ANSWERED','WRITING_SUBMISSION','REVIEW_RESULT','SPEAK_ATTEMPT','SPEAK_FEEDBACK','CONVERSATION_CORRECTION','MISSION_OBJECTIVE_COMPLETED') then
+    select mastery,evidence_count into old_mastery,old_evidence from public.learner_skill_mastery where user_id=uid and skill_id=sid;
+    old_mastery:=coalesce(old_mastery,.35); old_evidence:=coalesce(old_evidence,0);
+    observation:=greatest(0,least(1,raw_score*(.85+.30*diff)-case when used_hint then .08 else 0 end-case when used_translation then .06 else 0 end));
+    alpha:=greatest(.12,least(.35,.45/sqrt(old_evidence+1)));
+    new_mastery:=greatest(0,least(1,old_mastery*(1-alpha)+observation*alpha));
+    insert into public.learner_skill_mastery(user_id,skill_id,mastery,evidence_count,correct_count,incorrect_count,recent_accuracy,hint_dependency,translation_dependency,performance_trend,difficulty_state,last_practiced_at,updated_at)
+    values(uid,sid,new_mastery,1,case when is_correct then 1 else 0 end,case when is_correct=false then 1 else 0 end,coalesce(raw_score,.5),case when used_hint then 1 else 0 end,case when used_translation then 1 else 0 end,new_mastery-old_mastery,case when raw_score>=.9 and not used_hint and not used_translation then 'TOO_EASY' when raw_score<.45 or (used_hint and used_translation) then 'TOO_HARD' else 'APPROPRIATE' end,now(),now())
+    on conflict(user_id,skill_id) do update set
+      mastery=excluded.mastery,
+      evidence_count=public.learner_skill_mastery.evidence_count+1,
+      correct_count=public.learner_skill_mastery.correct_count+excluded.correct_count,
+      incorrect_count=public.learner_skill_mastery.incorrect_count+excluded.incorrect_count,
+      recent_accuracy=public.learner_skill_mastery.recent_accuracy*.7+excluded.recent_accuracy*.3,
+      hint_dependency=public.learner_skill_mastery.hint_dependency*.8+excluded.hint_dependency*.2,
+      translation_dependency=public.learner_skill_mastery.translation_dependency*.8+excluded.translation_dependency*.2,
+      performance_trend=excluded.performance_trend,
+      difficulty_state=case when public.learner_skill_mastery.evidence_count+1<3 then 'APPROPRIATE' else excluded.difficulty_state end,
+      last_practiced_at=now(),updated_at=now();
+
+    if et in ('REVIEW_RESULT','VOCABULARY_RECALL','VOCABULARY_FORGOTTEN') and coalesce(p_event->>'activityId','')<>'' then
+      interval_days:=case when is_correct is not true then 0 when coalesce((select successful_recalls from public.spaced_repetition_items where user_id=uid and item_id=p_event->>'activityId'),0)=0 then 1 when coalesce((select successful_recalls from public.spaced_repetition_items where user_id=uid and item_id=p_event->>'activityId'),0)=1 then 3 when coalesce((select successful_recalls from public.spaced_repetition_items where user_id=uid and item_id=p_event->>'activityId'),0)=2 then 7 when coalesce((select successful_recalls from public.spaced_repetition_items where user_id=uid and item_id=p_event->>'activityId'),0)=3 then 14 else 30 end;
+      insert into public.spaced_repetition_items(user_id,item_id,skill_id,source_item_id,successful_recalls,failed_recalls,difficulty_signal,review_interval,last_reviewed_at,next_review_at,updated_at)
+      values(uid,p_event->>'activityId',sid,nullif(p_event->>'sourceItemId',''),case when is_correct then 1 else 0 end,case when is_correct=false then 1 else 0 end,1-coalesce(raw_score,.5),case when interval_days=0 then interval '6 hours' else make_interval(days=>interval_days) end,now(),now()+case when interval_days=0 then interval '6 hours' else make_interval(days=>interval_days) end,now())
+      on conflict(user_id,item_id) do update set skill_id=excluded.skill_id,source_item_id=coalesce(excluded.source_item_id,public.spaced_repetition_items.source_item_id),successful_recalls=public.spaced_repetition_items.successful_recalls+excluded.successful_recalls,failed_recalls=public.spaced_repetition_items.failed_recalls+excluded.failed_recalls,difficulty_signal=public.spaced_repetition_items.difficulty_signal*.7+excluded.difficulty_signal*.3,review_interval=excluded.review_interval,last_reviewed_at=now(),next_review_at=excluded.next_review_at,updated_at=now();
+    end if;
+  end if;
+
+  select coalesce(sum(evidence_count),0),coalesce(avg(mastery),.35),coalesce(avg(performance_trend),0),least(1,count(*)::numeric/12)
+    into evidence_total,avg_mastery,avg_trend,coverage from public.learner_skill_mastery where user_id=uid;
+  if evidence_total<12 then next_level:=null; next_conf:=least(.49,evidence_total::numeric/24); else
+    next_level:=case when avg_mastery<.38 then 'A1' when avg_mastery<.52 then 'A2' when avg_mastery<.67 then 'B1' when avg_mastery<.79 then 'B2' when avg_mastery<.9 then 'C1' else 'C2' end;
+    next_conf:=least(.95,.45+(least(evidence_total,80)::numeric/160)+coverage*.1);
+  end if;
+  update public.learner_models m set
+    skill_mastery=coalesce((select jsonb_object_agg(skill_id,mastery order by skill_id) from public.learner_skill_mastery where user_id=uid),'{}'::jsonb),
+    weak_skills=coalesce((select array_agg(skill_id order by mastery,last_practiced_at) from public.learner_skill_mastery where user_id=uid and evidence_count>=3 and (mastery<.58 or incorrect_count>=3)), '{}'),
+    strong_skills=coalesce((select array_agg(skill_id order by mastery desc) from public.learner_skill_mastery where user_id=uid and evidence_count>=5 and mastery>=.78), '{}'),
+    review_priorities=coalesce((select array_agg(skill_id order by (1-mastery)+least(.35,incorrect_count*.04) desc) from public.learner_skill_mastery where user_id=uid and evidence_count>=2 limit 8), '{}'),
+    recent_mistakes=case
+      when is_correct=false and sid is not null then
+        case
+          when jsonb_array_length(coalesce(m.recent_mistakes,'[]'::jsonb)) >= 12
+            then (coalesce(m.recent_mistakes,'[]'::jsonb) #- '{0}'::text[]) || jsonb_build_array(jsonb_build_object('skillId',sid,'eventType',et,'at',now()))
+          else coalesce(m.recent_mistakes,'[]'::jsonb) || jsonb_build_array(jsonb_build_object('skillId',sid,'eventType',et,'at',now()))
+        end
+      else m.recent_mistakes
+    end,
+    repeated_mistakes=case when is_correct=false and sid is not null then jsonb_set(coalesce(m.repeated_mistakes,'{}'::jsonb),array[sid],to_jsonb(coalesce((m.repeated_mistakes->>sid)::int,0)+1),true) else m.repeated_mistakes end,
+    estimated_level=next_level,level_confidence=next_conf,performance_trend=avg_trend,event_count=m.event_count+1,updated_at=now()
+  where m.user_id=uid;
+  return jsonb_build_object('eventId',eid,'mastery',case when sid is null then null else new_mastery end,'estimatedLevel',next_level,'levelConfidence',next_conf);
+end $$;
+
+create or replace function public.get_learner_intelligence_v1()
+returns jsonb language plpgsql stable security definer
+set search_path=public,pg_temp
+as $$
+declare uid uuid:=auth.uid(); lm public.learner_models%rowtype; p public.profiles%rowtype; c public.ai_learning_consents%rowtype;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  select * into lm from public.ensure_learner_model_v1();
+  select * into p from public.profiles where id=uid;
+  select * into c from public.ai_learning_consents where user_id=uid;
+  return jsonb_build_object(
+    'anonymousLearnerId',lm.anonymous_learner_id,
+    'estimatedLevel',lm.estimated_level,
+    'levelConfidence',lm.level_confidence,
+    'levelDisplay',case when lm.estimated_level is null then 'STILL_LEARNING' else lm.estimated_level end,
+    'declaredLevel',p.level,
+    'learningGoals',coalesce(p.learning_goals,'{}'),
+    'helpLevel',lm.help_level,
+    'skillMastery',lm.skill_mastery,
+    'weakSkills',lm.weak_skills,
+    'strongSkills',lm.strong_skills,
+    'reviewPriorities',lm.review_priorities,
+    'performanceTrend',lm.performance_trend,
+    'eventCount',lm.event_count,
+    'completedScenarios',lm.completed_scenarios,
+    'recentTopics',lm.recent_topics,
+    'consent',jsonb_build_object('allowAnonymizedLearningActivity',coalesce(c.allow_anonymized_learning_activity,false),'allowRawVoiceTraining',coalesce(c.allow_raw_voice_training,false),'version',coalesce(c.consent_version,'ai-training-v1')),
+    'skills',coalesce((select jsonb_agg(jsonb_build_object('skillId',s.skill_id,'mastery',s.mastery,'evidenceCount',s.evidence_count,'successRate',case when s.correct_count+s.incorrect_count=0 then null else s.correct_count::numeric/(s.correct_count+s.incorrect_count) end,'recentAccuracy',s.recent_accuracy,'hintDependency',s.hint_dependency,'translationDependency',s.translation_dependency,'trend',s.performance_trend,'difficultyState',s.difficulty_state,'lastPracticedAt',s.last_practiced_at) order by s.mastery) from public.learner_skill_mastery s where s.user_id=uid),'[]'::jsonb)
+  );
+end $$;
+
+create or replace function public.set_ai_learning_preferences_v1(p_help_level text,p_allow_anonymized boolean)
+returns jsonb language plpgsql security definer
+set search_path=public,pg_temp
+as $$
+declare uid uuid:=auth.uid();
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  if p_help_level not in ('FULL_SUPPORT','SOME_SUPPORT','ENGLISH_ONLY') then raise exception 'invalid help level'; end if;
+  perform public.ensure_learner_model_v1();
+  update public.learner_models set help_level=p_help_level,updated_at=now() where user_id=uid;
+  insert into public.ai_learning_consents(user_id,allow_anonymized_learning_activity,consented_at,withdrawn_at,updated_at)
+  values(uid,p_allow_anonymized,case when p_allow_anonymized then now() else null end,case when p_allow_anonymized then null else now() end,now())
+  on conflict(user_id) do update set allow_anonymized_learning_activity=excluded.allow_anonymized_learning_activity,consented_at=case when excluded.allow_anonymized_learning_activity then coalesce(public.ai_learning_consents.consented_at,now()) else public.ai_learning_consents.consented_at end,withdrawn_at=case when excluded.allow_anonymized_learning_activity then null else now() end,updated_at=now();
+  return public.get_learner_intelligence_v1();
+end $$;
+
+create or replace function public.get_personalized_review_v1(p_limit integer default 20)
+returns jsonb language plpgsql stable security definer
+set search_path=public,pg_temp
+as $$
+declare uid uuid:=auth.uid(); lim int; ispro boolean;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  select e.is_pro into ispro from public.my_entitlements() e;
+  lim:=least(greatest(coalesce(p_limit,20),1),case when coalesce(ispro,false) then 100 else 5 end);
+  return coalesce((
+    select jsonb_agg(jsonb_build_object('unit_id',x.unit_id,'item_key',x.item_key,'kind',x.kind,'prompt',x.prompt,'answer',x.answer,'strength',x.strength,'mistake_count',x.mistake_count,'due_at',x.due_at,'skill_id',x.skill_id,'priority',x.priority) order by x.priority desc,x.due_at)
+    from (
+      select r.*,case
+        when r.kind='vocabulary' and r.unit_id like 'c1-%' then 'vocabulary.airport'
+        when r.kind='grammar' then 'grammar.present_simple'
+        when r.kind='listening' then 'listening.detail'
+        when r.kind='pronunciation' then 'speaking.fluency'
+        when r.kind='reading' then 'reading.detail'
+        when r.kind='writing' then 'writing.sentence_structure'
+        else lower(regexp_replace(r.kind,'[^a-z0-9]+','_','g'))||'.general' end skill_id,
+        (greatest(0,extract(epoch from (now()-r.due_at))/86400)*.04 + r.mistake_count*.16 + (5-r.strength)*.12 + coalesce(1-sm.mastery,.5)*.48) priority
+      from public.user_review_items r
+      left join public.learner_skill_mastery sm on sm.user_id=uid and sm.skill_id=case
+        when r.kind='vocabulary' and r.unit_id like 'c1-%' then 'vocabulary.airport'
+        when r.kind='grammar' then 'grammar.present_simple'
+        when r.kind='listening' then 'listening.detail'
+        when r.kind='pronunciation' then 'speaking.fluency'
+        when r.kind='reading' then 'reading.detail'
+        when r.kind='writing' then 'writing.sentence_structure'
+        else lower(regexp_replace(r.kind,'[^a-z0-9]+','_','g'))||'.general' end
+      where r.user_id=uid and r.due_at<=now()
+      order by priority desc,r.due_at limit lim
+    ) x
+  ),'[]'::jsonb);
+end $$;
+
+create or replace function public.get_ai_entitlements_v1()
+returns jsonb language plpgsql stable security definer
+set search_path=public,pg_temp
+as $$
+declare uid uuid:=auth.uid(); pro boolean:=false; used int;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  select coalesce(e.is_pro,false) into pro from public.my_entitlements() e;
+  select count(*) into used from public.ai_usage where user_id=uid and created_at>=date_trunc('day',now()) and status<>'CANCELLED';
+  return jsonb_build_object('isPro',pro,'dailyRequestLimit',case when pro then 60 else 8 end,'usedToday',used,'remainingToday',greatest(0,(case when pro then 60 else 8 end)-used),'features',jsonb_build_object('freeTalk',true,'dailyTalk',true,'practiceWeaknesses',pro,'aiMissions',case when pro then array['airport','shopping','interview'] else array['airport'] end));
+end $$;
+
+create or replace function public.reserve_ai_request_v1(p_feature text)
+returns jsonb language plpgsql security definer
+set search_path=public,pg_temp
+as $$
+declare uid uuid:=auth.uid(); ent jsonb; usage_id uuid;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  if p_feature not in ('FREE_TALK','PRACTICE_WEAKNESSES','DAILY_TALK','MISSION') then raise exception 'invalid feature'; end if;
+  ent:=public.get_ai_entitlements_v1();
+  if (ent->>'remainingToday')::int<=0 then return jsonb_build_object('allowed',false,'status','RATE_LIMITED','entitlements',ent); end if;
+  if p_feature='PRACTICE_WEAKNESSES' and not (ent->>'isPro')::boolean then return jsonb_build_object('allowed',false,'status','PRO_REQUIRED','entitlements',ent); end if;
+  insert into public.ai_usage(user_id,feature) values(uid,p_feature) returning id into usage_id;
+  return jsonb_build_object('allowed',true,'usageId',usage_id,'entitlements',ent);
+end $$;
+
+create or replace function public.complete_ai_usage_v1(p_usage_id uuid,p_status text,p_provider text,p_model text,p_latency_ms integer,p_input_units integer default null,p_output_units integer default null)
+returns boolean language plpgsql security definer
+set search_path=public,pg_temp
+as $$
+begin
+  if auth.uid() is null then raise exception 'not authenticated'; end if;
+  if p_status not in ('SUCCESS','TIMEOUT','RATE_LIMITED','NETWORK_ERROR','PROVIDER_ERROR','INVALID_RESPONSE','CANCELLED') then raise exception 'invalid status'; end if;
+  update public.ai_usage set status=p_status,provider=left(p_provider,80),model=left(p_model,120),latency_ms=greatest(0,least(coalesce(p_latency_ms,0),3600000)),input_units=p_input_units,output_units=p_output_units,completed_at=now() where id=p_usage_id and user_id=auth.uid();
+  return found;
+end $$;
+
+create or replace function public.start_ai_session_v1(p_mode text,p_scenario_id text default null,p_topic text default null)
+returns uuid language plpgsql security definer
+set search_path=public,pg_temp
+as $$
+declare sid uuid;
+begin
+  if auth.uid() is null then raise exception 'not authenticated'; end if;
+  if p_mode not in ('FREE_TALK','PRACTICE_WEAKNESSES','DAILY_TALK','MISSION') then raise exception 'invalid mode'; end if;
+  insert into public.ai_sessions(user_id,mode,scenario_id,topic) values(auth.uid(),p_mode,left(nullif(p_scenario_id,''),80),left(nullif(p_topic,''),120)) returning id into sid;
+  return sid;
+end $$;
+
+create or replace function public.get_ai_session_context_v1(p_session_id uuid)
+returns jsonb language plpgsql stable security definer
+set search_path=public,pg_temp
+as $$
+begin
+  if auth.uid() is null then raise exception 'not authenticated'; end if;
+  if not exists(select 1 from public.ai_sessions where id=p_session_id and user_id=auth.uid()) then raise exception 'session not found'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object('turnNumber',t.turn_number,'learnerInput',t.learner_input,'aiReply',t.ai_reply,'structuredResult',t.structured_result) order by t.turn_number) from (select * from public.ai_turns where session_id=p_session_id and user_id=auth.uid() order by turn_number desc limit 12)t),'[]'::jsonb);
+end $$;
+
+create or replace function public.record_ai_turn_v1(p_session_id uuid,p_turn_number integer,p_learner_input text,p_ai_reply text,p_structured_result jsonb,p_retrieved_ids text[],p_provider text,p_model text)
+returns bigint language plpgsql security definer
+set search_path=public,pg_temp
+as $$
+declare tid bigint;
+begin
+  if auth.uid() is null then raise exception 'not authenticated'; end if;
+  if not exists(select 1 from public.ai_sessions where id=p_session_id and user_id=auth.uid() and status='ACTIVE') then raise exception 'active session not found'; end if;
+  insert into public.ai_turns(session_id,user_id,turn_number,learner_input,ai_reply,structured_result,retrieved_knowledge_ids,provider,model)
+  values(p_session_id,auth.uid(),greatest(0,least(p_turn_number,200)),left(trim(p_learner_input),2000),left(trim(p_ai_reply),3000),coalesce(p_structured_result,'{}'),coalesce(p_retrieved_ids,'{}'),left(p_provider,80),left(p_model,120))
+  on conflict(session_id,turn_number) do update set learner_input=excluded.learner_input,ai_reply=excluded.ai_reply,structured_result=excluded.structured_result,retrieved_knowledge_ids=excluded.retrieved_knowledge_ids,provider=excluded.provider,model=excluded.model
+  returning id into tid;
+  update public.ai_sessions set updated_at=now() where id=p_session_id;
+  return tid;
+end $$;
+
+create or replace function public.finish_ai_session_v1(p_session_id uuid,p_status text,p_summary jsonb default '{}'::jsonb)
+returns boolean language plpgsql security definer
+set search_path=public,pg_temp
+as $$
+declare s public.ai_sessions%rowtype;
+begin
+  if auth.uid() is null then raise exception 'not authenticated'; end if;
+  if p_status not in ('COMPLETED','CANCELLED','ERROR') then raise exception 'invalid status'; end if;
+  update public.ai_sessions set status=p_status,short_term_state=coalesce(p_summary,'{}'),ended_at=now(),updated_at=now() where id=p_session_id and user_id=auth.uid() returning * into s;
+  if not found then return false; end if;
+  if p_status='COMPLETED' and s.scenario_id is not null then update public.learner_models set completed_scenarios=array(select distinct x from unnest(completed_scenarios||s.scenario_id)x),updated_at=now() where user_id=auth.uid(); end if;
+ lect r.*,case
+        when r.kind='vocabulary' and r.unit_id like 'c1-%' then 'vocabulary.airport'
+        when r.kind='grammar' then 'grammar.present_simple'
+        when r.kind='listening' then 'listening.detail'
+        when r.kind='pronunciation' then 'speaking.fluency'
+        when r.kind='reading' then 'reading.detail'
+        when r.kind='writing' then 'writing.sentence_structure'
+        else lower(regexp_replace(r.kind,'[^a-z0-9]+','_','g'))||'.general' end skill_id,
+        (greatest(0,extract(epoch from (now()-r.due_at))/86400)*.04 + r.mistake_count*.16 + (5-r.strength)*.12 + coalesce(1-sm.mastery,.5)*.48) priority
+      from public.user_review_items r
+      left join public.learner_skill_mastery sm on sm.user_id=uid and sm.skill_id=case
+        when r.kind='vocabulary' and r.unit_id like 'c1-%' then 'vocabulary.airport'
+        when r.kind='grammar' then 'grammar.present_simple'
+        when r.kind='listening' then 'listening.detail'
+        when r.kind='pronunciation' then 'speaking.fluency'
+        when r.kind='reading' then 'reading.detail'
+        when r.kind='writing' then 'writing.sentence_structure'
+        else lower(regexp_replace(r.kind,'[^a-z0-9]+','_','g'))||'.general' end
+      where r.user_id=uid and r.due_at<=now()
+      order by priority desc,r.due_at limit lim
+    ) x
+  ),'[]'::jsonb);
+end $$;
+
+create or replace function public.get_ai_entitlements_v1()
+returns jsonb language plpgsql stable security definer
+set search_path=public,pg_temp
+as $$
+declare uid uuid:=auth.uid(); pro boolean:=false; used int;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  select coalesce(e.is_pro,false) into pro from public.my_entitlements() e;
+  select count(*) into used from public.ai_usage where user_id=uid and created_at>=date_trunc('day',now()) and status<>'CANCELLED';
+  return jsonb_build_object('isPro',pro,'dailyRequestLimit',case when pro then 60 else 8 end,'usedToday',used,'remainingToday',greatest(0,(case when pro then 60 else 8 end)-used),'features',jsonb_build_object('freeTalk',true,'dailyTalk',true,'practiceWeaknesses',pro,'aiMissions',case when pro then array['airport','shopping','interview'] else array['airport'] end));
+end $$;
+
+create or replace function public.reserve_ai_request_v1(p_feature text)
+returns jsonb language plpgsql security definer
+set search_path=public,pg_temp
+as $$
+declare uid uuid:=auth.uid(); ent jsonb; usage_id uuid;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  if p_feature not in ('FREE_TALK','PRACTICE_WEAKNESSES','DAILY_TALK','MISSION') then raise exception 'invalid feature'; end if;
+  ent:=public.get_ai_entitlements_v1();
+  if (ent->>'remainingToday')::int<=0 then return jsonb_build_object('allowed',false,'status','RATE_LIMITED','entitlements',ent); end if;
+  if p_feature='PRACTICE_WEAKNESSES' and not (ent->>'isPro')::boolean then return jsonb_build_object('allowed',false,'status','PRO_REQUIRED','entitlements',ent); end if;
+  insert into public.ai_usage(user_id,feature) values(uid,p_feature) returning id into usage_id;
+  return jsonb_build_object('allowed',true,'usageId',usage_id,'entitlements',ent);
+end $$;
+
+create or replace function public.complete_ai_usage_v1(p_usage_id uuid,p_status text,p_provider text,p_model text,p_latency_ms integer,p_input_units integer default null,p_output_units integer default null)
+returns boolean language plpgsql security definer
+set search_path=public,pg_temp
+as $$
+begin
+  if auth.uid() is null then raise exception 'not authenticated'; end if;
+  if p_status not in ('SUCCESS','TIMEOUT','RATE_LIMITED','NETWORK_ERROR','PROVIDER_ERROR','INVALID_RESPONSE','CANCELLED') then raise exception 'invalid status'; end if;
+  update public.ai_usage set status=p_status,provider=left(p_provider,80),model=left(p_model,120),latency_ms=greatest(0,least(coalesce(p_latency_ms,0),3600000)),input_units=p_input_units,output_units=p_output_units,completed_at=now() where id=p_usage_id and user_id=auth.uid();
+  return found;
+end $$;
+
+create or replace function public.start_ai_session_v1(p_mode text,p_scenario_id text default null,p_topic text default null)
+returns uuid language plpgsql security definer
+set search_path=public,pg_temp
+as $$
+declare sid uuid;
+begin
+  if auth.uid() is null then raise exception 'not authenticated'; end if;
+  if p_mode not in ('FREE_TALK','PRACTICE_WEAKNESSES','DAILY_TALK
