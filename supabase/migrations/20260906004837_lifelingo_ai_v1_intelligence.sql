@@ -516,73 +516,96 @@ begin
   update public.ai_sessions set status=p_status,short_term_state=coalesce(p_summary,'{}'),ended_at=now(),updated_at=now() where id=p_session_id and user_id=auth.uid() returning * into s;
   if not found then return false; end if;
   if p_status='COMPLETED' and s.scenario_id is not null then update public.learner_models set completed_scenarios=array(select distinct x from unnest(completed_scenarios||s.scenario_id)x),updated_at=now() where user_id=auth.uid(); end if;
- lect r.*,case
-        when r.kind='vocabulary' and r.unit_id like 'c1-%' then 'vocabulary.airport'
-        when r.kind='grammar' then 'grammar.present_simple'
-        when r.kind='listening' then 'listening.detail'
-        when r.kind='pronunciation' then 'speaking.fluency'
-        when r.kind='reading' then 'reading.detail'
-        when r.kind='writing' then 'writing.sentence_structure'
-        else lower(regexp_replace(r.kind,'[^a-z0-9]+','_','g'))||'.general' end skill_id,
-        (greatest(0,extract(epoch from (now()-r.due_at))/86400)*.04 + r.mistake_count*.16 + (5-r.strength)*.12 + coalesce(1-sm.mastery,.5)*.48) priority
-      from public.user_review_items r
-      left join public.learner_skill_mastery sm on sm.user_id=uid and sm.skill_id=case
-        when r.kind='vocabulary' and r.unit_id like 'c1-%' then 'vocabulary.airport'
-        when r.kind='grammar' then 'grammar.present_simple'
-        when r.kind='listening' then 'listening.detail'
-        when r.kind='pronunciation' then 'speaking.fluency'
-        when r.kind='reading' then 'reading.detail'
-        when r.kind='writing' then 'writing.sentence_structure'
-        else lower(regexp_replace(r.kind,'[^a-z0-9]+','_','g'))||'.general' end
-      where r.user_id=uid and r.due_at<=now()
-      order by priority desc,r.due_at limit lim
-    ) x
-  ),'[]'::jsonb);
+  if s.topic is not null then update public.learner_models set recent_topics=(array_prepend(s.topic,recent_topics))[1:8],updated_at=now() where user_id=auth.uid(); end if;
+  return true;
 end $$;
 
-create or replace function public.get_ai_entitlements_v1()
+create or replace function private.sanitize_training_record_v1(p_record jsonb)
+returns jsonb language sql immutable
+set search_path=private,pg_temp
+as $$
+  select coalesce(p_record,'{}'::jsonb) - array['email','phone','name','display_name','real_name','url','account_id','user_id','partner_id','token','access_token','payment','raw_voice','voice_path'];
+$$;
+
+create or replace function public.admin_ai_overview_v1()
 returns jsonb language plpgsql stable security definer
-set search_path=public,pg_temp
+set search_path=public,private,pg_temp
 as $$
-declare uid uuid:=auth.uid(); pro boolean:=false; used int;
 begin
-  if uid is null then raise exception 'not authenticated'; end if;
-  select coalesce(e.is_pro,false) into pro from public.my_entitlements() e;
-  select count(*) into used from public.ai_usage where user_id=uid and created_at>=date_trunc('day',now()) and status<>'CANCELLED';
-  return jsonb_build_object('isPro',pro,'dailyRequestLimit',case when pro then 60 else 8 end,'usedToday',used,'remainingToday',greatest(0,(case when pro then 60 else 8 end)-used),'features',jsonb_build_object('freeTalk',true,'dailyTalk',true,'practiceWeaknesses',pro,'aiMissions',case when pro then array['airport','shopping','interview'] else array['airport'] end));
+  if not public.is_app_admin() then raise exception 'forbidden'; end if;
+  return jsonb_build_object(
+    'learners',(select count(*) from public.learner_models),
+    'events',(select count(*) from public.learning_events),
+    'consentedLearners',(select count(*) from public.ai_learning_consents where allow_anonymized_learning_activity),
+    'aiRequestsToday',(select count(*) from public.ai_usage where created_at>=date_trunc('day',now())),
+    'aiFailuresToday',(select count(*) from public.ai_usage where created_at>=date_trunc('day',now()) and status not in ('SUCCESS','RESERVED')),
+    'datasets',(select count(*) from private.dataset_versions),
+    'models',(select count(*) from private.model_registry),
+    'productionModels',coalesce((select jsonb_agg(jsonb_build_object('id',id,'modelId',model_id,'type',model_type,'version',version,'datasetVersion',dataset_version,'metrics',metrics,'status',status,'createdAt',created_at)) from private.model_registry where status='PRODUCTION'),'[]'::jsonb),
+    'recentTrainingRuns',coalesce((select jsonb_agg(to_jsonb(x)) from (select id,model_type,dataset_version,status,metrics,started_at,finished_at,created_at from private.training_runs order by created_at desc limit 10)x),'[]'::jsonb)
+  );
 end $$;
 
-create or replace function public.reserve_ai_request_v1(p_feature text)
-returns jsonb language plpgsql security definer
-set search_path=public,pg_temp
-as $$
-declare uid uuid:=auth.uid(); ent jsonb; usage_id uuid;
-begin
-  if uid is null then raise exception 'not authenticated'; end if;
-  if p_feature not in ('FREE_TALK','PRACTICE_WEAKNESSES','DAILY_TALK','MISSION') then raise exception 'invalid feature'; end if;
-  ent:=public.get_ai_entitlements_v1();
-  if (ent->>'remainingToday')::int<=0 then return jsonb_build_object('allowed',false,'status','RATE_LIMITED','entitlements',ent); end if;
-  if p_feature='PRACTICE_WEAKNESSES' and not (ent->>'isPro')::boolean then return jsonb_build_object('allowed',false,'status','PRO_REQUIRED','entitlements',ent); end if;
-  insert into public.ai_usage(user_id,feature) values(uid,p_feature) returning id into usage_id;
-  return jsonb_build_object('allowed',true,'usageId',usage_id,'entitlements',ent);
-end $$;
-
-create or replace function public.complete_ai_usage_v1(p_usage_id uuid,p_status text,p_provider text,p_model text,p_latency_ms integer,p_input_units integer default null,p_output_units integer default null)
+create or replace function public.admin_promote_model_v1(p_model uuid)
 returns boolean language plpgsql security definer
-set search_path=public,pg_temp
+set search_path=public,private,pg_temp
 as $$
+declare mt text;
 begin
-  if auth.uid() is null then raise exception 'not authenticated'; end if;
-  if p_status not in ('SUCCESS','TIMEOUT','RATE_LIMITED','NETWORK_ERROR','PROVIDER_ERROR','INVALID_RESPONSE','CANCELLED') then raise exception 'invalid status'; end if;
-  update public.ai_usage set status=p_status,provider=left(p_provider,80),model=left(p_model,120),latency_ms=greatest(0,least(coalesce(p_latency_ms,0),3600000)),input_units=p_input_units,output_units=p_output_units,completed_at=now() where id=p_usage_id and user_id=auth.uid();
-  return found;
+  if not public.is_app_admin() then raise exception 'forbidden'; end if;
+  select model_type into mt from private.model_registry where id=p_model and status in ('EXPERIMENTAL','STAGING','ARCHIVED');
+  if mt is null then raise exception 'candidate model not found'; end if;
+  update private.model_registry set status='ARCHIVED' where model_type=mt and status='PRODUCTION';
+  update private.model_registry set status='PRODUCTION',promoted_at=now() where id=p_model;
+  return true;
 end $$;
 
-create or replace function public.start_ai_session_v1(p_mode text,p_scenario_id text default null,p_topic text default null)
-returns uuid language plpgsql security definer
-set search_path=public,pg_temp
+create or replace function public.admin_rollback_model_v1(p_model_type text)
+returns boolean language plpgsql security definer
+set search_path=public,private,pg_temp
 as $$
-declare sid uuid;
+declare prior uuid;
 begin
-  if auth.uid() is null then raise exception 'not authenticated'; end if;
-  if p_mode not in ('FREE_TALK','PRACTICE_WEAKNESSES','DAILY_TALK
+  if not public.is_app_admin() then raise exception 'forbidden'; end if;
+  select id into prior from private.model_registry where model_type=p_model_type and status='ARCHIVED' order by promoted_at desc nulls last,created_at desc limit 1;
+  if prior is null then raise exception 'no rollback model'; end if;
+  update private.model_registry set status='STAGING' where model_type=p_model_type and status='PRODUCTION';
+  update private.model_registry set status='PRODUCTION',promoted_at=now() where id=prior;
+  return true;
+end $$;
+
+revoke all on public.learner_models,public.learner_skill_mastery,public.learning_events,public.spaced_repetition_items,public.ai_learning_consents,public.ai_sessions,public.ai_turns,public.ai_usage from public,anon,authenticated;
+grant select on public.learner_models,public.learner_skill_mastery,public.learning_events,public.spaced_repetition_items,public.ai_learning_consents,public.ai_sessions,public.ai_turns to authenticated;
+
+revoke execute on function public.ensure_learner_model_v1() from public,anon;
+revoke execute on function public.record_learning_event_v1(jsonb) from public,anon;
+revoke execute on function public.get_learner_intelligence_v1() from public,anon;
+revoke execute on function public.set_ai_learning_preferences_v1(text,boolean) from public,anon;
+revoke execute on function public.get_personalized_review_v1(integer) from public,anon;
+revoke execute on function public.get_ai_entitlements_v1() from public,anon;
+revoke execute on function public.reserve_ai_request_v1(text) from public,anon;
+revoke execute on function public.complete_ai_usage_v1(uuid,text,text,text,integer,integer,integer) from public,anon;
+revoke execute on function public.start_ai_session_v1(text,text,text) from public,anon;
+revoke execute on function public.get_ai_session_context_v1(uuid) from public,anon;
+revoke execute on function public.record_ai_turn_v1(uuid,integer,text,text,jsonb,text[],text,text) from public,anon;
+revoke execute on function public.finish_ai_session_v1(uuid,text,jsonb) from public,anon;
+revoke execute on function public.admin_ai_overview_v1() from public,anon;
+revoke execute on function public.admin_promote_model_v1(uuid) from public,anon;
+revoke execute on function public.admin_rollback_model_v1(text) from public,anon;
+revoke execute on function public.bootstrap_learner_model_v1() from public,anon,authenticated;
+
+grant execute on function public.ensure_learner_model_v1() to authenticated;
+grant execute on function public.record_learning_event_v1(jsonb) to authenticated;
+grant execute on function public.get_learner_intelligence_v1() to authenticated;
+grant execute on function public.set_ai_learning_preferences_v1(text,boolean) to authenticated;
+grant execute on function public.get_personalized_review_v1(integer) to authenticated;
+grant execute on function public.get_ai_entitlements_v1() to authenticated;
+grant execute on function public.reserve_ai_request_v1(text) to authenticated;
+grant execute on function public.complete_ai_usage_v1(uuid,text,text,text,integer,integer,integer) to authenticated;
+grant execute on function public.start_ai_session_v1(text,text,text) to authenticated;
+grant execute on function public.get_ai_session_context_v1(uuid) to authenticated;
+grant execute on function public.record_ai_turn_v1(uuid,integer,text,text,jsonb,text[],text,text) to authenticated;
+grant execute on function public.finish_ai_session_v1(uuid,text,jsonb) to authenticated;
+grant execute on function public.admin_ai_overview_v1() to authenticated;
+grant execute on function public.admin_promote_model_v1(uuid) to authenticated;
+grant execute on function public.admin_rollback_model_v1(text) to authenticated;
