@@ -37,12 +37,21 @@ const pairs={
 'AI Partner is temporarily unavailable.':'همراه هوشمند موقتاً در دسترس نیست.',
 'Your regular LifeLingo missions still work.':'ماموریت‌های عادی LifeLingo همچنان کار می‌کنند.',
 'Practice a regular Mission':'تمرین یک ماموریت عادی',
-'Back to Speak':'بازگشت به مکالمه'
+'Back to Speak':'بازگشت به مکالمه',
+'Add learning goals':'افزودن هدف یادگیری',
+'Full Persian support':'پشتیبانی کامل فارسی',
+'Some support':'کمی پشتیبانی',
+'English only':'فقط انگلیسی',
+'Human Partner messages and raw voice are never included by this consent.':'پیام‌های هم‌تمرینی انسانی و صدای خام هرگز با این رضایت‌نامه وارد داده‌های آموزشی نمی‌شوند.',
+'First Mission':'اولین ماموریت',
+'3-Day Streak':'پیوستگی ۳ روزه',
+'Chapter Complete':'فصل کامل‌شده',
+'Manage journey':'مدیریت مسیر'
 };
 const reverse=Object.fromEntries(Object.entries(pairs).map(([en,fa])=>[fa,en]));
 const isFa=()=>document.documentElement.dataset.language==='fa'||document.documentElement.lang==='fa';
 const learningTarget=el=>!!el?.closest?.('.dailyPhrase,[data-learning-target="true"],[data-speak],#speakQuestion,.speakQuestion');
-function text(node){if(!node?.nodeValue||!node.parentElement||learningTarget(node.parentElement))return;const raw=node.nodeValue,trim=raw.trim();if(!trim)return;const next=isFa()?pairs[trim]:reverse[trim];if(next)node.nodeValue=raw.replace(trim,next)}
+function text(node){if(!node?.nodeValue||!node.parentElement||learningTarget(node.parentElement))return;const raw=node.nodeValue,trim=raw.trim();if(!trim)return;let next=isFa()?pairs[trim]:reverse[trim];if(!next&&isFa())next=trim.replace(/New Arrival/g,'تازه‌وارد').replace(/elementary/g,'مقدماتی').replace(/learning EN/g,'در حال یادگیری انگلیسی').replace(/CEFR estimate, not a certificate/g,'تخمین CEFR است، نه مدرک رسمی').replace(/Active until\s+/g,'فعال تا ');else if(!next&&!isFa())next=trim.replace(/تازه‌وارد/g,'New Arrival').replace(/مقدماتی/g,'elementary').replace(/در حال یادگیری انگلیسی/g,'learning EN').replace(/تخمین CEFR است، نه مدرک رسمی/g,'CEFR estimate, not a certificate').replace(/فعال تا\s+/g,'Active until ');if(next&&next!==trim)node.nodeValue=raw.replace(trim,next)}
 function attr(el,name){const raw=el.getAttribute?.(name);if(!raw)return;const next=isFa()?pairs[raw]:reverse[raw];if(next)el.setAttribute(name,next)}
 function apply(root=document){const base=root===document?document.body:root;if(!base)return;if(base.nodeType===1){['placeholder','title','aria-label'].forEach(a=>attr(base,a))}const tw=document.createTreeWalker(base,NodeFilter.SHOW_TEXT);let n;while((n=tw.nextNode()))text(n);base.querySelectorAll?.('[placeholder],[title],[aria-label]').forEach(el=>['placeholder','title','aria-label'].forEach(a=>attr(el,a)))}
 let queued=false;function queue(root=document){if(queued)return;queued=true;queueMicrotask(()=>{queued=false;apply(root)})}
