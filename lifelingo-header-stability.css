@@ -1,0 +1,5 @@
+/* Keep the header's physical layout stable when page content switches to RTL. */
+html[dir="rtl"] .topbar,html[dir="rtl"] .headerInner,html[dir="rtl"] .headerActions,html[dir="rtl"] .topmeta{direction:ltr}
+html[dir="rtl"] .topmeta{margin:0}
+html[dir="rtl"] .desktopNav button,html[dir="rtl"] .profileMenu{direction:rtl}
+html[dir="rtl"] .profileMenu,html[dir="rtl"] .profileMenu button{text-align:right}
