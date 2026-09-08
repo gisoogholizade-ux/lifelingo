@@ -3,3 +3,4 @@ html[dir="rtl"] .topbar,html[dir="rtl"] .headerInner,html[dir="rtl"] .headerActi
 html[dir="rtl"] .topmeta{margin:0}
 html[dir="rtl"] .desktopNav button,html[dir="rtl"] .profileMenu{direction:rtl}
 html[dir="rtl"] .profileMenu,html[dir="rtl"] .profileMenu button{text-align:right}
+html[data-plan="pro"] .node.lock{opacity:1}
