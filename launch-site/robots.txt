@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gisoogholizade-ux.github.io/lifelingo/launch-site/sitemap.xml
