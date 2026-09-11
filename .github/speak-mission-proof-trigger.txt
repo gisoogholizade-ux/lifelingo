@@ -1,0 +1,1 @@
+Trigger mission lifecycle diagnostic workflow against current main.
